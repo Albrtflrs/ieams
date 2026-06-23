@@ -1,0 +1,48 @@
+<script setup>
+import AppLayout from '@/Layouts/AppLayout.vue';
+import { useForm } from '@inertiajs/vue3';
+
+const form = useForm({
+    name: '',
+    contact_person: '',
+    phone: '',
+    email: '',
+    address: ''
+});
+
+function submit() {
+    form.post(route('clients.store'));
+}
+</script>
+
+<template>
+    <AppLayout>
+        <div class="p-6 max-w-xl">
+            <h1 class="text-2xl font-bold mb-4">Add Client</h1>
+            <form @submit.prevent="submit" class="space-y-4">
+                <div>
+                    <label class="block font-medium">Name *</label>
+                    <input v-model="form.name" class="w-full border rounded p-2" required />
+                    <div v-if="form.errors.name" class="text-red-500 text-sm">{{ form.errors.name }}</div>
+                </div>
+                <div>
+                    <label class="block font-medium">Contact Person</label>
+                    <input v-model="form.contact_person" class="w-full border rounded p-2" />
+                </div>
+                <div>
+                    <label class="block font-medium">Phone</label>
+                    <input v-model="form.phone" class="w-full border rounded p-2" />
+                </div>
+                <div>
+                    <label class="block font-medium">Email</label>
+                    <input v-model="form.email" type="email" class="w-full border rounded p-2" />
+                </div>
+                <div>
+                    <label class="block font-medium">Address</label>
+                    <textarea v-model="form.address" class="w-full border rounded p-2" rows="3"></textarea>
+                </div>
+                <button type="submit" :disabled="form.processing" class="bg-blue-500 text-white px-4 py-2 rounded">Save</button>
+            </form>
+        </div>
+    </AppLayout>
+</template>
