@@ -84,14 +84,14 @@ class SummaryController extends Controller
 
         $operatingProfit = $grossProfit - $operatingExpenses;
 
-        // Cash metrics (always all-time for these calculations)
+        // Cash balance (all-time)
         $cashBalance = (float) IncomeTransaction::sum('amount_paid') - (float) ExpenseTransaction::sum('amount');
-        
-        // Burn rate: average expenses over last 3 months
-        $threeMonthsAgo = Carbon::now()->subMonths(3)->startOfMonth();
-        $burnRate = (float) ExpenseTransaction::whereBetween('created_at', [$threeMonthsAgo, Carbon::now()])
-            ->sum('amount') / 3;
-        $cashRunaway = $burnRate > 0 ? $cashBalance / $burnRate : 0;
+
+        // ---- NEW: Receivables (unpaid income) ----
+        $receivables = (float) IncomeTransaction::where('status', 'Unpaid')
+            ->orWhere('status', 'Cash On Hold')
+            ->when($startDate && $endDate, fn($q) => $q->whereBetween('created_at', [$startDate, $endDate]))
+            ->sum('amount_paid');
 
         // Ratios
         $grossMargin = $totalRevenue > 0 ? ($grossProfit / $totalRevenue) * 100 : 0;
@@ -158,8 +158,7 @@ class SummaryController extends Controller
                 'operating_expenses' => $operatingExpenses,
                 'operating_profit' => $operatingProfit,
                 'cash_balance' => $cashBalance,
-                'burn_rate' => $burnRate,
-                'cash_runaway' => $cashRunaway,
+                'receivables' => $receivables,  // <-- added
                 'gross_margin' => $grossMargin,
                 'operating_margin' => $operatingMargin,
                 'net_margin' => $netMargin,

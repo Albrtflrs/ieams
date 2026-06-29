@@ -9,14 +9,43 @@ use Inertia\Inertia;
 
 class MiscellaneousController extends Controller
 {
-    public function index()
+    public function index(Request $request)
     {
         $this->authorize('viewAny', MiscellaneousTransaction::class);
 
+        // ─── Filters ──────────────────────────────
+        $type = $request->input('type');
+        $category = $request->input('category');
+        $search = $request->input('search');
+        $dateFrom = $request->input('date_from');
+        $dateTo = $request->input('date_to');
+
         $perPage = Setting::get('rows_per_page', 20);
 
-        $transactions = MiscellaneousTransaction::latest()
+        $query = MiscellaneousTransaction::query();
+
+        if ($type) {
+            $query->where('type', $type);
+        }
+        if ($category) {
+            $query->where('category', $category);
+        }
+        if ($search) {
+            $query->where(function ($q) use ($search) {
+                $q->where('description', 'like', "%{$search}%")
+                  ->orWhere('reference_number', 'like', "%{$search}%");
+            });
+        }
+        if ($dateFrom) {
+            $query->where('date', '>=', $dateFrom);
+        }
+        if ($dateTo) {
+            $query->where('date', '<=', $dateTo);
+        }
+
+        $transactions = $query->latest()
             ->paginate($perPage)
+            ->withQueryString()
             ->through(fn($item) => [
                 'id' => $item->id,
                 'type' => $item->type,
@@ -28,20 +57,40 @@ class MiscellaneousController extends Controller
                 'created_at' => $item->created_at->format('Y-m-d H:i'),
             ]);
 
-        $totalIncome = MiscellaneousTransaction::where('type', 'income')->sum('amount');
-        $totalExpense = MiscellaneousTransaction::where('type', 'expense')->sum('amount');
+        // ─── Summary (filtered) ──────────────────────
+        $totalIncome = (clone $query)->where('type', 'income')->sum('amount');
+        $totalExpense = (clone $query)->where('type', 'expense')->sum('amount');
         $net = $totalIncome - $totalExpense;
-        $count = MiscellaneousTransaction::count();
+        $count = (clone $query)->count();
 
-        $summary = ['total_income' => $totalIncome, 'total_expense' => $totalExpense, 'net' => $net, 'count' => $count];
+        $summary = [
+            'total_income' => $totalIncome,
+            'total_expense' => $totalExpense,
+            'net' => $net,
+            'count' => $count,
+        ];
 
-        return Inertia::render('Miscellaneous/Index', ['transactions' => $transactions, 'summary' => $summary]);
+        // ─── Categories for filter dropdown ──────────
+        $categories = MiscellaneousTransaction::CATEGORIES;
+
+        return Inertia::render('Miscellaneous/Index', [
+            'transactions' => $transactions,
+            'summary' => $summary,
+            'filters' => [
+                'type' => $type,
+                'category' => $category,
+                'search' => $search,
+                'date_from' => $dateFrom,
+                'date_to' => $dateTo,
+            ],
+            'categories' => $categories,
+        ]);
     }
 
     public function create()
     {
         $this->authorize('create', MiscellaneousTransaction::class);
-        $categories = explode(',', Setting::get('default_misc_categories', 'Donation,Refund,Misc Sales,Other'));
+        $categories = MiscellaneousTransaction::CATEGORIES;
         return Inertia::render('Miscellaneous/Create', ['categories' => $categories]);
     }
 
@@ -52,7 +101,7 @@ class MiscellaneousController extends Controller
             'type' => 'required|in:income,expense',
             'date' => 'required|date',
             'amount' => 'required|numeric|min:0',
-            'category' => ['nullable', 'in:' . implode(',', Setting::get('default_misc_categories', 'Donation,Refund,Misc Sales,Other'))],
+            'category' => ['nullable', 'in:' . implode(',', MiscellaneousTransaction::CATEGORIES)],
             'description' => 'nullable|string',
             'reference_number' => 'nullable|string|max:100',
         ]);
@@ -64,7 +113,7 @@ class MiscellaneousController extends Controller
     public function edit(MiscellaneousTransaction $misc)
     {
         $this->authorize('update', $misc);
-        $categories = explode(',', Setting::get('default_misc_categories', 'Donation,Refund,Misc Sales,Other'));
+        $categories = MiscellaneousTransaction::CATEGORIES;
 
         return Inertia::render('Miscellaneous/Edit', [
             'transaction' => [
@@ -87,7 +136,7 @@ class MiscellaneousController extends Controller
             'type' => 'required|in:income,expense',
             'date' => 'required|date',
             'amount' => 'required|numeric|min:0',
-            'category' => ['nullable', 'in:' . implode(',', Setting::get('default_misc_categories', 'Donation,Refund,Misc Sales,Other'))],
+            'category' => ['nullable', 'in:' . implode(',', MiscellaneousTransaction::CATEGORIES)],
             'description' => 'nullable|string',
             'reference_number' => 'nullable|string|max:100',
         ]);
@@ -100,5 +149,50 @@ class MiscellaneousController extends Controller
         $this->authorize('delete', $misc);
         $misc->delete();
         return redirect()->route('misc.index')->with('success', 'Miscellaneous transaction deleted.');
+    }
+
+    // ─── Export CSV ──────────────────────────────
+    public function exportCsv(Request $request)
+    {
+        $this->authorize('viewAny', MiscellaneousTransaction::class);
+
+        // Apply same filters as index
+        $query = MiscellaneousTransaction::query();
+        if ($type = $request->input('type')) $query->where('type', $type);
+        if ($category = $request->input('category')) $query->where('category', $category);
+        if ($search = $request->input('search')) {
+            $query->where(function ($q) use ($search) {
+                $q->where('description', 'like', "%{$search}%")
+                  ->orWhere('reference_number', 'like', "%{$search}%");
+            });
+        }
+        if ($dateFrom = $request->input('date_from')) $query->where('date', '>=', $dateFrom);
+        if ($dateTo = $request->input('date_to')) $query->where('date', '<=', $dateTo);
+
+        $items = $query->latest()->get();
+
+        $headers = [
+            'Content-Type' => 'text/csv',
+            'Content-Disposition' => 'attachment; filename="miscellaneous_transactions.csv"',
+        ];
+
+        $callback = function() use ($items) {
+            $handle = fopen('php://output', 'w');
+            fputcsv($handle, ['ID', 'Type', 'Date', 'Amount', 'Category', 'Description', 'Reference #']);
+            foreach ($items as $item) {
+                fputcsv($handle, [
+                    $item->id,
+                    $item->type,
+                    $item->date->format('Y-m-d'),
+                    $item->amount,
+                    $item->category,
+                    $item->description,
+                    $item->reference_number,
+                ]);
+            }
+            fclose($handle);
+        };
+
+        return response()->stream($callback, 200, $headers);
     }
 }

@@ -2,7 +2,10 @@
 import { ref, computed, watch } from 'vue';
 
 const props = defineProps({
-    municipalities: { type: Array, required: true }, // [{ id, name, barangays: [] }]
+    municipalities: {
+        type: Array,
+        default: () => [],   // 👈 Always an array, never undefined
+    },
     modelValue: {
         type: Object,
         default: () => ({ municipality: '', barangay: '' }),
@@ -18,14 +21,17 @@ const selectedBarangay = ref(props.modelValue.barangay || '');
 const customMunicipality = ref('');
 const customBarangay = ref('');
 
-// Is the chosen municipality one we have a barangay list for?
-const isKnownMunicipality = computed(() =>
-    props.municipalities.some(m => m.name === selectedMunicipality.value)
-);
+// Safely check if municipality exists in list – guard against undefined
+const isKnownMunicipality = computed(() => {
+    const munis = props.municipalities || [];
+    return munis.some(m => m.name === selectedMunicipality.value);
+});
 
+// Safely get barangays for the selected municipality
 const currentBarangays = computed(() => {
-    const found = props.municipalities.find(m => m.name === selectedMunicipality.value);
-    return found ? found.barangays : [];
+    const munis = props.municipalities || [];
+    const found = munis.find(m => m.name === selectedMunicipality.value);
+    return found?.barangays || [];
 });
 
 // When municipality changes, reset barangay selection
@@ -56,7 +62,7 @@ watch([selectedMunicipality, selectedBarangay, customMunicipality, customBaranga
             <label class="block text-sm font-medium mb-1">Municipality</label>
             <select v-model="selectedMunicipality" class="w-full border rounded px-3 py-2">
                 <option value="">Select municipality</option>
-                <option v-for="m in municipalities" :key="m.id" :value="m.name">{{ m.name }}</option>
+                <option v-for="m in (municipalities || [])" :key="m.id" :value="m.name">{{ m.name }}</option>
                 <option :value="OTHER">Other (outside Aklan)</option>
             </select>
 

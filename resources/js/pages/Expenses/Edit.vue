@@ -6,6 +6,7 @@ import { useSettings } from '@/composables/useSettings';
 const props = defineProps({
     expense: Object,
     suppliers: Array,
+    categories: Array, // now passed from controller
 });
 
 const { currency } = useSettings();
@@ -19,7 +20,7 @@ const form = useForm({
     receipt_number: props.expense.receipt_number || '',
     payment_method: props.expense.payment_method || '',
     is_miscellaneous: props.expense.is_miscellaneous || false,
-    status: props.expense.status || 'Unpaid', // 👈 NEW
+    status: props.expense.status || 'Unpaid',
 });
 
 function submit() {
@@ -49,11 +50,9 @@ function submit() {
             </div>
 
             <form @submit.prevent="submit" class="bg-white dark:bg-gray-800 p-6 rounded-xl shadow space-y-4">
-                <!-- Supplier -->
+
                 <div>
-                    <label class="block text-sm font-medium text-gray-700 dark:text-gray-300" title="Select the supplier for this expense.">
-                        Supplier
-                    </label>
+                    <label class="block text-sm font-medium text-gray-700 dark:text-gray-300">Supplier</label>
                     <select v-model="form.supplier_id" class="w-full border rounded-lg px-3 py-2 dark:bg-gray-700 dark:border-gray-600">
                         <option :value="null">None</option>
                         <option v-for="s in suppliers" :key="s.id" :value="s.id">{{ s.name }}</option>
@@ -61,16 +60,12 @@ function submit() {
                     <div v-if="form.errors.supplier_id" class="text-red-500 text-sm">{{ form.errors.supplier_id }}</div>
                 </div>
 
-                <!-- Date -->
                 <div>
-                    <label class="block text-sm font-medium text-gray-700 dark:text-gray-300" title="Date of the expense.">
-                        Date
-                    </label>
+                    <label class="block text-sm font-medium text-gray-700 dark:text-gray-300">Date</label>
                     <input type="date" v-model="form.date" class="w-full border rounded-lg px-3 py-2 dark:bg-gray-700 dark:border-gray-600" />
                     <div v-if="form.errors.date" class="text-red-500 text-sm">{{ form.errors.date }}</div>
                 </div>
 
-                <!-- Amount -->
                 <div>
                     <label class="block text-sm font-medium text-gray-700 dark:text-gray-300" :title="`Amount of the expense (${currency}).`">
                         Amount ({{ currency }})
@@ -79,45 +74,34 @@ function submit() {
                     <div v-if="form.errors.amount" class="text-red-500 text-sm">{{ form.errors.amount }}</div>
                 </div>
 
-                <!-- Category -->
+                <!-- Category dropdown with new categories -->
                 <div>
-                    <label class="block text-sm font-medium text-gray-700 dark:text-gray-300" title="Select a category that best describes this expense.">
-                        Category
-                    </label>
-                    <input type="text" v-model="form.category" class="w-full border rounded-lg px-3 py-2 dark:bg-gray-700 dark:border-gray-600" />
+                    <label class="block text-sm font-medium text-gray-700 dark:text-gray-300">Category</label>
+                    <select v-model="form.category" class="w-full border rounded-lg px-3 py-2 dark:bg-gray-700 dark:border-gray-600">
+                        <option value="">Select Category</option>
+                        <option v-for="cat in props.categories" :key="cat" :value="cat">{{ cat }}</option>
+                    </select>
                     <div v-if="form.errors.category" class="text-red-500 text-sm">{{ form.errors.category }}</div>
                 </div>
 
-                <!-- Description -->
                 <div>
-                    <label class="block text-sm font-medium text-gray-700 dark:text-gray-300" title="Detailed description of the expense.">
-                        Description
-                    </label>
+                    <label class="block text-sm font-medium text-gray-700 dark:text-gray-300">Description</label>
                     <textarea v-model="form.description" rows="3" class="w-full border rounded-lg px-3 py-2 dark:bg-gray-700 dark:border-gray-600"></textarea>
                     <div v-if="form.errors.description" class="text-red-500 text-sm">{{ form.errors.description }}</div>
                 </div>
 
-                <!-- Receipt Number -->
                 <div>
-                    <label class="block text-sm font-medium text-gray-700 dark:text-gray-300" title="Official receipt number for this expense.">
-                        Receipt Number
-                    </label>
+                    <label class="block text-sm font-medium text-gray-700 dark:text-gray-300">Receipt Number</label>
                     <input type="text" v-model="form.receipt_number" class="w-full border rounded-lg px-3 py-2 dark:bg-gray-700 dark:border-gray-600" />
                 </div>
 
-                <!-- Payment Method -->
                 <div>
-                    <label class="block text-sm font-medium text-gray-700 dark:text-gray-300" title="How the expense was paid (e.g., cash, bank transfer).">
-                        Payment Method
-                    </label>
+                    <label class="block text-sm font-medium text-gray-700 dark:text-gray-300">Payment Method</label>
                     <input type="text" v-model="form.payment_method" class="w-full border rounded-lg px-3 py-2 dark:bg-gray-700 dark:border-gray-600" />
                 </div>
 
-                <!-- Status 👈 NEW -->
                 <div>
-                    <label class="block text-sm font-medium text-gray-700 dark:text-gray-300" title="Payment status of this expense.">
-                        Status *
-                    </label>
+                    <label class="block text-sm font-medium text-gray-700 dark:text-gray-300">Status *</label>
                     <select v-model="form.status" class="w-full border rounded-lg px-3 py-2 dark:bg-gray-700 dark:border-gray-600">
                         <option value="Unpaid">Unpaid</option>
                         <option value="Pending">Pending</option>
@@ -126,15 +110,11 @@ function submit() {
                     <div v-if="form.errors.status" class="text-red-500 text-sm">{{ form.errors.status }}</div>
                 </div>
 
-                <!-- Miscellaneous Checkbox -->
                 <div class="flex items-center gap-2">
                     <input type="checkbox" v-model="form.is_miscellaneous" id="misc" />
-                    <label for="misc" class="text-sm text-gray-700 dark:text-gray-300" title="Check if this is a miscellaneous expense (not regular recurring).">
-                        Miscellaneous expense
-                    </label>
+                    <label for="misc" class="text-sm text-gray-700 dark:text-gray-300">Miscellaneous expense</label>
                 </div>
 
-                <!-- Actions -->
                 <div class="flex gap-2">
                     <button type="submit" :disabled="form.processing" class="bg-emerald-500 hover:bg-emerald-600 text-white px-6 py-2 rounded-lg transition">
                         Update

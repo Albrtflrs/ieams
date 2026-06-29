@@ -5,14 +5,14 @@ import { computed } from 'vue';
 import { useDateFormat } from '@/composables/useDateFormat';
 
 const props = defineProps({
-    users: Object, // paginated collection with 'data', 'links', etc.
+    users: Object,
 });
 
 const { formatDate } = useDateFormat();
 const page = usePage();
 const currentUser = computed(() => page.props.auth?.user);
 
-// Calculate summary stats
+// ─── Summary stats ──────────────────────
 const totalUsers = computed(() => props.users.total ?? 0);
 const roleCounts = computed(() => {
     const counts = {};
@@ -24,6 +24,19 @@ const roleCounts = computed(() => {
     return counts;
 });
 
+// ─── Role display formatting ─────────────
+const formatRole = (role) => {
+    const map = {
+        super_admin: 'Super Admin',
+        admin: 'Admin',
+        manager: 'Manager',
+        staff: 'Staff',
+        viewer: 'Viewer',
+    };
+    return map[role] || role;
+};
+
+// ─── Permissions ──────────────────────────
 const canEdit = (user) => {
     if (currentUser.value?.role === 'super_admin') return true;
     if (currentUser.value?.role === 'admin' && user.role !== 'super_admin') return true;
@@ -41,6 +54,7 @@ const deleteUser = (id) => {
     }
 };
 
+// ─── Role badge colors (raw role) ────────
 const roleBadgeClass = (role) => {
     const colors = {
         super_admin: 'bg-purple-100 text-purple-800 dark:bg-purple-900/30 dark:text-purple-400',
@@ -76,15 +90,15 @@ const roleBadgeClass = (role) => {
                 </Link>
             </div>
 
-            <!-- Summary Cards -->
+            <!-- Summary Cards (showing formatted role names) -->
             <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
-                <div class="bg-gradient-to-br from-blue-500 to-indigo-600 text-white rounded-lg p-4 shadow"
-                     title="Total number of users in the system.">
+                <div class="bg-gradient-to-br from-blue-500 to-indigo-600 text-white rounded-lg p-4 shadow">
                     <p class="text-sm uppercase tracking-wider opacity-80">Total Users</p>
                     <p class="text-2xl font-bold">{{ totalUsers }}</p>
                 </div>
-                <div v-for="(count, role) in roleCounts" :key="role" class="bg-white dark:bg-gray-800 p-4 rounded-lg shadow border border-gray-200 dark:border-gray-700">
-                    <p class="text-sm text-gray-500 dark:text-gray-400 capitalize">{{ role }}</p>
+                <div v-for="(count, role) in roleCounts" :key="role"
+                     class="bg-white dark:bg-gray-800 p-4 rounded-lg shadow border border-gray-200 dark:border-gray-700">
+                    <p class="text-sm text-gray-500 dark:text-gray-400">{{ formatRole(role) }}</p>
                     <p class="text-2xl font-bold">{{ count }}</p>
                 </div>
             </div>
@@ -109,13 +123,12 @@ const roleBadgeClass = (role) => {
                             <td class="px-4 py-2">{{ user.email }}</td>
                             <td class="px-4 py-2">
                                 <span class="px-2 py-1 rounded-full text-xs font-medium capitalize"
-                                    :class="roleBadgeClass(user.role)">
-                                    {{ user.role }}
+                                      :class="roleBadgeClass(user.role)">
+                                    {{ formatRole(user.role) }}
                                 </span>
                             </td>
                             <td class="px-4 py-2">{{ formatDate(user.created_at) }}</td>
                             <td class="px-4 py-2">
-                                <!-- Edit button – only if allowed -->
                                 <Link
                                     v-if="canEdit(user)"
                                     :href="route('users.edit', user.id)"
@@ -123,7 +136,6 @@ const roleBadgeClass = (role) => {
                                 >
                                     Edit
                                 </Link>
-                                <!-- Delete button – only if allowed -->
                                 <button
                                     v-if="canDelete(user)"
                                     @click="deleteUser(user.id)"

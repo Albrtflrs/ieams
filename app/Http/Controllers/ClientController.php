@@ -10,12 +10,30 @@ use Illuminate\Support\Facades\DB;
 
 class ClientController extends Controller
 {
-    public function index()
+    public function index(Request $request) // 👈 added Request
     {
         $this->authorize('viewAny', Client::class);
 
+        $search = $request->input('search');
+
         $perPage = Setting::get('rows_per_page', 20);
-        $clients = Client::latest()->paginate($perPage)
+
+        $query = Client::query();
+
+        // Apply search filter
+        if ($search) {
+            $query->where(function ($q) use ($search) {
+                $q->where('name', 'like', "%{$search}%")
+                  ->orWhere('contact_person', 'like', "%{$search}%")
+                  ->orWhere('email', 'like', "%{$search}%")
+                  ->orWhere('phone', 'like', "%{$search}%")
+                  ->orWhere('address', 'like', "%{$search}%");
+            });
+        }
+
+        $clients = $query->latest()
+            ->paginate($perPage)
+            ->withQueryString() // 👈 keeps search in pagination links
             ->through(fn($client) => [
                 'id' => $client->id,
                 'name' => $client->name,
@@ -26,6 +44,7 @@ class ClientController extends Controller
                 'created_at' => $client->created_at->format('Y-m-d'),
             ]);
 
+        // ─── Summary calculations (unchanged) ───
         $totalClients = Client::count();
         $topClientRevenue = Client::withSum('incomeTransactions', 'amount_paid')
             ->orderBy('income_transactions_sum_amount_paid', 'desc')->first();
@@ -40,9 +59,14 @@ class ClientController extends Controller
             'top_client_count' => $topClientCount ? ['name' => $topClientCount->name, 'count' => $topClientCount->income_transactions_count ?? 0] : null,
         ];
 
-        return Inertia::render('Clients/Index', ['clients' => $clients, 'summary' => $summary]);
+        return Inertia::render('Clients/Index', [
+            'clients' => $clients,
+            'summary' => $summary,
+            'filters' => ['search' => $search], // 👈 pass current search to Vue
+        ]);
     }
 
+    // ─── Other methods (create, store, edit, update, destroy) remain unchanged ───
     public function create()
     {
         $this->authorize('create', Client::class);

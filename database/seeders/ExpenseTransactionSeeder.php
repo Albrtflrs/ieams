@@ -7,8 +7,9 @@ use Illuminate\Database\Seeder;
 
 class ExpenseTransactionSeeder extends Seeder
 {
-    public function run()
+    public function run(): void
     {
-        ExpenseTransaction::factory(40)->create();
+        // Do NOT truncate – keep existing records and add more
+        ExpenseTransaction::factory(160)->create(); // adds 160 more (total 200)
     }
 }

@@ -2,10 +2,12 @@
 import AppLayout from '@/Layouts/AppLayout.vue';
 import { Link, router } from '@inertiajs/vue3';
 import DataTable from '@/Components/DataTable.vue';
+import { ref, watch } from 'vue';
 
 const props = defineProps({
     clients: Object,
     summary: Object,
+    filters: Object, // 👈 new
 });
 
 const columns = [
@@ -23,12 +25,45 @@ function destroy(id) {
         router.delete(route('clients.destroy', id));
     }
 }
+
+// ─── Search state ──────────────────────────
+const search = ref(props.filters?.search || '');
+
+// ─── Debounce helper ────────────────────────
+function debounce(fn, delay) {
+    let timeoutId = null;
+    return function (...args) {
+        clearTimeout(timeoutId);
+        timeoutId = setTimeout(() => fn(...args), delay);
+    };
+}
+
+// ─── Apply search ───────────────────────────
+const applySearch = debounce(() => {
+    const params = {};
+    if (search.value) params.search = search.value;
+    router.get(route('clients.index'), params, {
+        preserveState: true,
+        preserveScroll: true,
+        replace: true,
+    });
+}, 300);
+
+// ─── Watch search ───────────────────────────
+watch(search, applySearch);
+
+// ─── Reset search ───────────────────────────
+const resetSearch = () => {
+    search.value = '';
+    // Force reload without query
+    window.location.href = route('clients.index');
+};
 </script>
 
 <template>
     <AppLayout>
         <div class="p-6">
-            <div class="flex justify-between mb-4">
+            <div class="flex flex-wrap justify-between items-center mb-4 gap-2">
                 <h1 class="text-2xl font-bold">Clients</h1>
                 <Link :href="route('clients.create')" class="bg-blue-500 text-white px-4 py-2 rounded">
                     Add Client
@@ -55,6 +90,35 @@ function destroy(id) {
                     <p class="text-lg font-bold">{{ summary.top_client_count?.name || '—' }}</p>
                     <p class="text-sm opacity-80">{{ summary.top_client_count?.count ?? 0 }} transactions</p>
                 </div>
+            </div>
+
+            <!-- Search Bar -->
+            <div class="bg-white dark:bg-gray-800 p-4 rounded-lg shadow mb-4 flex flex-wrap items-center gap-4">
+                <div class="flex-1 min-w-[200px]">
+                    <label class="block text-xs font-medium text-gray-700 dark:text-gray-300">Search Clients</label>
+                    <div class="relative">
+                        <input
+                            v-model="search"
+                            type="text"
+                            placeholder="Search by name, contact, email, phone..."
+                            class="w-full border rounded-lg px-3 py-1.5 dark:bg-gray-700 dark:border-gray-600 pr-8"
+                        />
+                        <button
+                            v-if="search"
+                            @click="search = ''"
+                            class="absolute right-2 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600 dark:text-gray-500 dark:hover:text-gray-300"
+                        >
+                            ✕
+                        </button>
+                    </div>
+                </div>
+                <button
+                    @click="resetSearch"
+                    class="bg-gray-200 dark:bg-gray-700 hover:bg-gray-300 dark:hover:bg-gray-600 text-gray-700 dark:text-gray-300 px-3 py-1.5 rounded text-sm transition"
+                >
+                    Reset
+                </button>
+                <span class="text-xs text-gray-500 ml-2">{{ clients.total }} records</span>
             </div>
 
             <!-- DataTable -->

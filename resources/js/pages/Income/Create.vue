@@ -118,7 +118,7 @@ const submit = () => form.post(route('income.store'));
                     </div>
                 </div>
 
-                <!-- Category -->
+                <!-- Category (dynamic) -->
                 <div>
                     <label class="block font-medium text-gray-700 dark:text-gray-300" title="Select the category that best describes this income.">
                         Category *

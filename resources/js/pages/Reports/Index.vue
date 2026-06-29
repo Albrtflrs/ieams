@@ -79,89 +79,76 @@ const exportReport = (format) => {
     window.location.href = url;
 };
 
-// Chart refs
-let incomeDoughnutChart = null;
-let expenseDoughnutChart = null;
-let trendChart = null;
+// ─── Chart refs ──────────────────────────────────────
+let incomeBarChart = null;      // Replaces doughnut
+let expenseBarChart = null;    // Replaces doughnut
 
 function initCharts() {
-    if (incomeDoughnutChart) incomeDoughnutChart.destroy();
-    if (expenseDoughnutChart) expenseDoughnutChart.destroy();
-    if (trendChart) trendChart.destroy();
+    if (incomeBarChart) incomeBarChart.destroy();
+    if (expenseBarChart) expenseBarChart.destroy();
 
     const dark = document.documentElement.classList.contains('dark');
     const txtColor = dark ? '#e5e7eb' : '#1f2937';
     const gridColor = dark ? '#374151' : '#e5e7eb';
 
-    const gradientColors = ['#10b981','#6366f1','#8b5cf6','#f59e0b','#f43f5e','#ec4899','#14b8a6','#f97316','#3b82f6'];
-
-    // Income Doughnut
-    const ctx1 = document.getElementById('incomeDoughnutChart');
+    // ── Income by Category (Bar) ──
+    const ctx1 = document.getElementById('incomeBarChart');
     if (ctx1 && props.income_by_category.length) {
-        incomeDoughnutChart = new Chart(ctx1, {
-            type: 'doughnut',
+        const sorted = [...props.income_by_category].sort((a,b) => b.value - a.value);
+        incomeBarChart = new Chart(ctx1, {
+            type: 'bar',
             data: {
-                labels: props.income_by_category.map(c => c.name),
-                datasets: [{ data: props.income_by_category.map(c => c.value), backgroundColor: gradientColors.slice(0, props.income_by_category.length), borderWidth: 2, borderColor: dark ? '#1f2937' : '#ffffff' }]
+                labels: sorted.map(c => c.name),
+                datasets: [{ 
+                    label: 'Income Amount', 
+                    data: sorted.map(c => c.value), 
+                    backgroundColor: dark ? 'rgba(16,185,129,0.7)' : 'rgba(16,185,129,0.85)',
+                    borderColor: '#10b981',
+                    borderWidth: 1,
+                    borderRadius: 4
+                }]
             },
             options: {
                 responsive: true,
-                cutout: '65%',
+                maintainAspectRatio: false,
                 plugins: {
                     legend: { labels: { color: txtColor, boxWidth: 12 } },
-                    tooltip: { callbacks: { label: (ctx) => `${ctx.label}: ${peso(ctx.raw)}` } }
-                }
-            }
-        });
-    }
-
-    // Expense Doughnut
-    const ctx2 = document.getElementById('expenseDoughnutChart');
-    if (ctx2 && props.expense_by_category.length) {
-        expenseDoughnutChart = new Chart(ctx2, {
-            type: 'doughnut',
-            data: {
-                labels: props.expense_by_category.map(c => c.name),
-                datasets: [{ data: props.expense_by_category.map(c => c.value), backgroundColor: gradientColors.slice(0, props.expense_by_category.length), borderWidth: 2, borderColor: dark ? '#1f2937' : '#ffffff' }]
-            },
-            options: {
-                responsive: true,
-                cutout: '65%',
-                plugins: {
-                    legend: { labels: { color: txtColor, boxWidth: 12 } },
-                    tooltip: { callbacks: { label: (ctx) => `${ctx.label}: ${peso(ctx.raw)}` } }
-                }
-            }
-        });
-    }
-
-    // Trend Line with gradient fill
-    const ctx3 = document.getElementById('trendChart');
-    if (ctx3) {
-        const gradient = ctx3.getContext('2d').createLinearGradient(0, 0, 0, 240);
-        gradient.addColorStop(0, dark ? 'rgba(16,185,129,0.3)' : 'rgba(16,185,129,0.2)');
-        gradient.addColorStop(1, dark ? 'rgba(16,185,129,0.02)' : 'rgba(16,185,129,0.02)');
-        const gradient2 = ctx3.getContext('2d').createLinearGradient(0, 0, 0, 240);
-        gradient2.addColorStop(0, dark ? 'rgba(239,68,68,0.3)' : 'rgba(239,68,68,0.2)');
-        gradient2.addColorStop(1, dark ? 'rgba(239,68,68,0.02)' : 'rgba(239,68,68,0.02)');
-
-        trendChart = new Chart(ctx3, {
-            type: 'line',
-            data: {
-                labels: props.months,
-                datasets: [
-                    { label: 'Income', data: props.income_trend, borderColor: '#10b981', backgroundColor: gradient, fill: true, tension: 0.4, pointRadius: 4, pointBackgroundColor: '#10b981' },
-                    { label: 'Expenses', data: props.expense_trend, borderColor: '#ef4444', backgroundColor: gradient2, fill: true, tension: 0.4, pointRadius: 4, pointBackgroundColor: '#ef4444' }
-                ]
-            },
-            options: {
-                responsive: true,
-                plugins: {
-                    legend: { labels: { color: txtColor } },
                     tooltip: { callbacks: { label: (ctx) => `${ctx.dataset.label}: ${peso(ctx.raw)}` } }
                 },
                 scales: {
-                    x: { ticks: { color: txtColor }, grid: { color: gridColor } },
+                    x: { ticks: { color: txtColor, maxRotation: 45 }, grid: { color: gridColor } },
+                    y: { ticks: { color: txtColor, callback: (val) => peso(val) }, grid: { color: gridColor } }
+                }
+            }
+        });
+    }
+
+    // ── Expense by Category (Bar) ──
+    const ctx2 = document.getElementById('expenseBarChart');
+    if (ctx2 && props.expense_by_category.length) {
+        const sorted = [...props.expense_by_category].sort((a,b) => b.value - a.value);
+        expenseBarChart = new Chart(ctx2, {
+            type: 'bar',
+            data: {
+                labels: sorted.map(c => c.name),
+                datasets: [{ 
+                    label: 'Expense Amount', 
+                    data: sorted.map(c => c.value), 
+                    backgroundColor: dark ? 'rgba(239,68,68,0.7)' : 'rgba(239,68,68,0.85)',
+                    borderColor: '#ef4444',
+                    borderWidth: 1,
+                    borderRadius: 4
+                }]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                plugins: {
+                    legend: { labels: { color: txtColor, boxWidth: 12 } },
+                    tooltip: { callbacks: { label: (ctx) => `${ctx.dataset.label}: ${peso(ctx.raw)}` } }
+                },
+                scales: {
+                    x: { ticks: { color: txtColor, maxRotation: 45 }, grid: { color: gridColor } },
                     y: { ticks: { color: txtColor, callback: (val) => peso(val) }, grid: { color: gridColor } }
                 }
             }
@@ -169,7 +156,7 @@ function initCharts() {
     }
 }
 
-watch(() => [props.income_by_category, props.expense_by_category, props.income_trend, props.expense_trend], () => {
+watch(() => [props.income_by_category, props.expense_by_category], () => {
     nextTick(() => initCharts());
 }, { deep: true });
 
@@ -280,25 +267,21 @@ onMounted(() => {
                 </div>
             </div>
 
-            <!-- Charts: Doughnut charts -->
+            <!-- ── Bar Charts (Replaces doughnuts) ── -->
             <div class="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-8">
                 <div class="bg-white dark:bg-gray-800 p-4 rounded shadow">
                     <h2 class="text-lg font-semibold mb-2">Income by Category</h2>
-                    <div style="height: 240px;"><canvas id="incomeDoughnutChart"></canvas></div>
+                    <div style="height: 240px;"><canvas id="incomeBarChart"></canvas></div>
                     <div v-if="!income_by_category.length" class="text-center text-gray-500 py-4">No income data.</div>
                 </div>
                 <div class="bg-white dark:bg-gray-800 p-4 rounded shadow">
                     <h2 class="text-lg font-semibold mb-2">Expense by Category</h2>
-                    <div style="height: 240px;"><canvas id="expenseDoughnutChart"></canvas></div>
+                    <div style="height: 240px;"><canvas id="expenseBarChart"></canvas></div>
                     <div v-if="!expense_by_category.length" class="text-center text-gray-500 py-4">No expense data.</div>
                 </div>
             </div>
 
-            <!-- Trend -->
-            <div class="bg-white dark:bg-gray-800 p-4 rounded shadow mb-8">
-                <h2 class="text-lg font-semibold mb-2">Monthly Income vs Expenses</h2>
-                <div style="height: 240px;"><canvas id="trendChart"></canvas></div>
-            </div>
+            <!-- ── Monthly Income vs Expenses REMOVED ── -->
 
             <!-- Top Lists -->
             <div class="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-8">

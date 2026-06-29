@@ -5,25 +5,66 @@ namespace App\Http\Controllers;
 use App\Models\Quotation;
 use App\Models\QuotationItem;
 use App\Models\Client;
-use App\Models\Item; // 👈 ADDED
+use App\Models\Item;
 use App\Models\IncomeTransaction;
 use App\Models\Setting;
 use Illuminate\Http\Request;
 use Inertia\Inertia;
 use Illuminate\Support\Facades\DB;
+use Barryvdh\DomPDF\Facade\Pdf;
+use Illuminate\Support\Facades\Log;
 
 class QuotationController extends Controller
 {
-    public function index()
+    public function index(Request $request)
     {
         $this->authorize('viewAny', Quotation::class);
 
+        // ─── Filters ──────────────────────────
+        $clientId = $request->input('client_id');
+        $dateFilter = $request->input('date_filter');
+        $startDate = $request->input('start_date');
+        $endDate = $request->input('end_date');
+        $status = $request->input('status');
+
         $perPage = Setting::get('rows_per_page', 20);
-        $quotations = Quotation::with(['client', 'creator'])
+
+        $query = Quotation::with(['client', 'creator'])
             ->when(auth()->user()->role === 'staff' || auth()->user()->role === 'viewer', function ($q) {
                 $q->where('created_by', auth()->id());
-            })
-            ->latest()
+            });
+
+        if ($clientId) {
+            $query->where('client_id', $clientId);
+        }
+
+        if ($status) {
+            $query->where('status', $status);
+        }
+
+        if ($dateFilter) {
+            switch ($dateFilter) {
+                case 'today':
+                    $query->whereDate('created_at', today());
+                    break;
+                case 'this_week':
+                    $query->whereBetween('created_at', [now()->startOfWeek(), now()->endOfWeek()]);
+                    break;
+                case 'this_month':
+                    $query->whereMonth('created_at', now()->month)->whereYear('created_at', now()->year);
+                    break;
+                case 'this_year':
+                    $query->whereYear('created_at', now()->year);
+                    break;
+                case 'custom':
+                    if ($startDate && $endDate) {
+                        $query->whereBetween('created_at', [$startDate, $endDate]);
+                    }
+                    break;
+            }
+        }
+
+        $quotations = $query->latest()
             ->paginate($perPage)
             ->through(fn($q) => [
                 'id' => $q->id,
@@ -37,8 +78,24 @@ class QuotationController extends Controller
                 'created_by' => $q->creator?->name,
             ]);
 
+        $items = Item::orderBy('name')->get(['id', 'name', 'description', 'default_cost_price', 'default_markup_percentage', 'default_selling_price']);
+        $clients = Client::orderBy('name')->get(['id', 'name']);
+        $statuses = ['draft', 'sent', 'accepted', 'rejected', 'expired', 'converted'];
+
         return Inertia::render('Quotations/Index', [
             'quotations' => $quotations,
+            'items' => $items,
+            'user_role' => auth()->user()->role,
+            'categories' => IncomeTransaction::CATEGORIES,
+            'clients' => $clients,
+            'statuses' => $statuses,
+            'filters' => [
+                'client_id' => $clientId,
+                'date_filter' => $dateFilter,
+                'start_date' => $startDate,
+                'end_date' => $endDate,
+                'status' => $status,
+            ],
         ]);
     }
 
@@ -47,8 +104,7 @@ class QuotationController extends Controller
         $this->authorize('create', Quotation::class);
 
         $clients = Client::orderBy('name')->get(['id', 'name', 'address']);
-        // 👇 FETCH ITEMS FROM CATALOG
-        $items = Item::orderBy('name')->get(['id', 'name', 'description', 'default_cost_price', 'default_selling_price', 'default_markup_percentage']);
+        $items = Item::orderBy('name')->get(['id', 'name', 'description', 'default_cost_price', 'default_selling_price', 'default_markup_percentage', 'category']);
 
         $next = Quotation::count() + 1;
         $prefix = Setting::get('quotation_prefix', 'QT-');
@@ -56,10 +112,11 @@ class QuotationController extends Controller
 
         return Inertia::render('Quotations/Create', [
             'clients' => $clients,
-            'items' => $items, // 👈 PASS TO VUE
+            'items' => $items,
             'quotation_number' => $number,
             'default_currency' => Setting::get('currency_symbol', '₱'),
-            'user_role' => auth()->user()->role, // 👈 PASS ROLE
+            'user_role' => auth()->user()->role,
+            'categories' => IncomeTransaction::CATEGORIES,
         ]);
     }
 
@@ -75,8 +132,8 @@ class QuotationController extends Controller
             'valid_until' => 'nullable|date|after_or_equal:date_issued',
             'currency' => 'string|max:10',
             'subtotal' => 'numeric|min:0',
-            'discount' => 'numeric|min:0',
-            'tax' => 'numeric|min:0',
+            'discount' => 'numeric|min:0|max:100',
+            'tax' => 'numeric|min:0|max:100',
             'total_amount' => 'numeric|min:0',
             'markup_percentage' => 'numeric|min:0',
             'markup_amount' => 'numeric|min:0',
@@ -97,14 +154,12 @@ class QuotationController extends Controller
         DB::beginTransaction();
 
         try {
-            // Auto-generate number if not provided
             if (empty($validated['quotation_number'])) {
                 $next = Quotation::count() + 1;
                 $prefix = Setting::get('quotation_prefix', 'QT-');
                 $validated['quotation_number'] = $prefix . str_pad($next, 4, '0', STR_PAD_LEFT);
             }
 
-            // Set client_name from client if provided
             if ($validated['client_id']) {
                 $client = Client::find($validated['client_id']);
                 if ($client) {
@@ -117,7 +172,6 @@ class QuotationController extends Controller
 
             $quotation = Quotation::create($validated);
 
-            // Create items
             $items = $request->input('items', []);
             foreach ($items as $item) {
                 $item['quotation_id'] = $quotation->id;
@@ -148,16 +202,60 @@ class QuotationController extends Controller
         $this->authorize('update', $quotation);
 
         $clients = Client::orderBy('name')->get(['id', 'name', 'address']);
-        // 👇 FETCH ITEMS FROM CATALOG
-        $items = Item::orderBy('name')->get(['id', 'name', 'description', 'default_cost_price', 'default_selling_price', 'default_markup_percentage']);
+        $items = Item::orderBy('name')->get(['id', 'name', 'description', 'default_cost_price', 'default_selling_price', 'default_markup_percentage', 'category']);
         $quotation->load('items');
 
         return Inertia::render('Quotations/Edit', [
             'quotation' => $quotation,
             'clients' => $clients,
-            'items' => $items, // 👈 PASS TO VUE
-            'user_role' => auth()->user()->role, // 👈 PASS ROLE
+            'items' => $items,
+            'quotation_number' => $quotation->quotation_number,
+            'default_currency' => Setting::get('currency_symbol', '₱'),
+            'user_role' => auth()->user()->role,
+            'categories' => IncomeTransaction::CATEGORIES,
         ]);
+    }
+
+    protected function performConversionToIncome(Quotation $quotation)
+    {
+        if ($quotation->converted_to_income_id) {
+            return null;
+        }
+
+        $prefix = Setting::get('invoice_prefix', 'INV-');
+        $next = Setting::get('invoice_next_number', 1);
+        $itemNo = $prefix . $next;
+
+        $incomeData = [
+            'item_no' => $itemNo,
+            'client_id' => $quotation->client_id,
+            'agency_department' => $quotation->client_name,
+            'municipal_barangay' => $quotation->client_address ?? '',
+            'particulars' => 'Quotation: ' . $quotation->quotation_number,
+            'date_delivered' => $quotation->date_issued ?? now(),
+            'amount_paid' => 0,
+            'date_paid' => null,
+            'receipt_number' => null,
+            'gross_price' => $quotation->total_amount,
+            'royalty_percent' => 0,
+            'deductions' => 0,
+            'category' => 'QUOTATION',
+            'status' => 'Unpaid',
+            'remarks' => 'Converted from quotation #' . $quotation->quotation_number,
+            'created_by' => auth()->id(),
+            'is_miscellaneous' => false,
+        ];
+
+        $income = IncomeTransaction::create($incomeData);
+
+        Setting::updateOrCreate(['key' => 'invoice_next_number'], ['value' => $next + 1]);
+
+        $quotation->update([
+            'converted_to_income_id' => $income->id,
+            'status' => 'converted',
+        ]);
+
+        return $income;
     }
 
     public function update(Request $request, Quotation $quotation)
@@ -172,7 +270,7 @@ class QuotationController extends Controller
             'valid_until' => 'nullable|date|after_or_equal:date_issued',
             'currency' => 'string|max:10',
             'subtotal' => 'numeric|min:0',
-            'discount' => 'numeric|min:0',
+            'discount' => 'numeric|min:0|max:100',
             'tax' => 'numeric|min:0',
             'total_amount' => 'numeric|min:0',
             'markup_percentage' => 'numeric|min:0',
@@ -192,6 +290,8 @@ class QuotationController extends Controller
             'items.*.markup_amount' => 'nullable|numeric|min:0',
         ]);
 
+        $oldStatus = $quotation->status;
+
         DB::beginTransaction();
 
         try {
@@ -205,7 +305,6 @@ class QuotationController extends Controller
 
             $quotation->update($validated);
 
-            // Sync items
             $itemIds = [];
             foreach ($request->input('items', []) as $itemData) {
                 if (isset($itemData['id']) && $itemData['id']) {
@@ -223,11 +322,25 @@ class QuotationController extends Controller
 
             $quotation->items()->whereNotIn('id', $itemIds)->delete();
 
+            // ─── Auto-convert if enabled ──────────────────────────────
+            $newStatus = $validated['status'];
+            $autoConvert = Setting::get('auto_convert_accepted_quotations', false);
+
+            if ($autoConvert && $newStatus === 'accepted' && $oldStatus !== 'accepted' && !$quotation->converted_to_income_id) {
+                $this->performConversionToIncome($quotation);
+            }
+
             DB::commit();
+
+            if ($autoConvert && $newStatus === 'accepted' && $oldStatus !== 'accepted' && $quotation->converted_to_income_id) {
+                return redirect()->route('quotations.index')
+                    ->with('success', 'Quotation accepted and automatically converted to income.');
+            }
 
             return redirect()->route('quotations.index')->with('success', 'Quotation updated.');
         } catch (\Exception $e) {
             DB::rollBack();
+            Log::error('Quotation update failed: ' . $e->getMessage());
             return back()->withErrors(['error' => 'Failed to update quotation: ' . $e->getMessage()]);
         }
     }
@@ -239,7 +352,6 @@ class QuotationController extends Controller
         return redirect()->route('quotations.index')->with('success', 'Quotation deleted.');
     }
 
-    // ─── Convert to Income ──────────────────────────
     public function convertToIncome(Quotation $quotation)
     {
         $this->authorize('convertToIncome', $quotation);
@@ -255,31 +367,65 @@ class QuotationController extends Controller
         DB::beginTransaction();
 
         try {
-            $income = IncomeTransaction::create([
-                'client_id' => $quotation->client_id,
-                'agency_department' => $quotation->client_name,
-                'particulars' => 'Quotation: ' . $quotation->quotation_number,
-                'gross_price' => $quotation->total_amount,
-                'amount_paid' => 0,
-                'status' => 'Unpaid',
-                'category' => 'QUOTATION',
-                'date_delivered' => now(),
-                'remarks' => 'Converted from quotation #' . $quotation->quotation_number,
-                'created_by' => auth()->id(),
-            ]);
-
-            $quotation->update([
-                'status' => 'converted',
-                'converted_to_income_id' => $income->id,
-            ]);
-
+            $income = $this->performConversionToIncome($quotation);
             DB::commit();
-
             return redirect()->route('income.edit', $income->id)
-                ->with('success', 'Quotation converted to Income successfully. You can now manage payment.');
+                ->with('success', 'Quotation converted to Income successfully.');
         } catch (\Exception $e) {
             DB::rollBack();
             return back()->withErrors(['error' => 'Failed to convert: ' . $e->getMessage()]);
         }
+    }
+
+    public function exportPdf(Quotation $quotation)
+    {
+        $this->authorize('view', $quotation);
+        $quotation->load('items');
+        $pdf = Pdf::loadView('pdf.quotation', compact('quotation'));
+        return $pdf->download('quotation-' . $quotation->quotation_number . '.pdf');
+    }
+
+    public function exportCsv(Quotation $quotation)
+    {
+        $this->authorize('view', $quotation);
+        $quotation->load('items');
+
+        $headers = [
+            'Content-Type' => 'text/csv',
+            'Content-Disposition' => 'attachment; filename="quotation-' . $quotation->quotation_number . '.csv"',
+        ];
+
+        $callback = function() use ($quotation) {
+            $handle = fopen('php://output', 'w');
+            fputcsv($handle, ['Description', 'Quantity', 'Unit Price', 'Selling Price', 'Total']);
+
+            foreach ($quotation->items as $item) {
+                fputcsv($handle, [
+                    $item->description,
+                    $item->quantity,
+                    $item->unit_price,
+                    $item->selling_price,
+                    $item->total,
+                ]);
+            }
+
+            fputcsv($handle, []);
+            fputcsv($handle, ['Subtotal', '', '', '', $quotation->subtotal]);
+
+            if ($quotation->discount > 0) {
+                fputcsv($handle, ['Discount (' . $quotation->discount . '%)', '', '', '', $quotation->subtotal * $quotation->discount / 100]);
+            }
+
+            if ($quotation->tax > 0) {
+                $taxable = $quotation->subtotal - ($quotation->subtotal * $quotation->discount / 100);
+                fputcsv($handle, ['Tax (' . $quotation->tax . '%)', '', '', '', $taxable * $quotation->tax / 100]);
+            }
+
+            fputcsv($handle, ['Total Amount', '', '', '', $quotation->total_amount]);
+
+            fclose($handle);
+        };
+
+        return response()->stream($callback, 200, $headers);
     }
 }

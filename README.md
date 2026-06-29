@@ -1,59 +1,296 @@
-<p align="center"><a href="https://laravel.com" target="_blank"><img src="https://raw.githubusercontent.com/laravel/art/master/logo-lockup/5%20SVG/2%20CMYK/1%20Full%20Color/laravel-logolockup-cmyk-red.svg" width="400" alt="Laravel Logo"></a></p>
 
-<p align="center">
-<a href="https://github.com/laravel/framework/actions"><img src="https://github.com/laravel/framework/workflows/tests/badge.svg" alt="Build Status"></a>
-<a href="https://packagist.org/packages/laravel/framework"><img src="https://img.shields.io/packagist/dt/laravel/framework" alt="Total Downloads"></a>
-<a href="https://packagist.org/packages/laravel/framework"><img src="https://img.shields.io/packagist/v/laravel/framework" alt="Latest Stable Version"></a>
-<a href="https://packagist.org/packages/laravel/framework"><img src="https://img.shields.io/packagist/l/laravel/framework" alt="License"></a>
-</p>
+**Benefits:**
+- No manual calculations – system auto-calculates.
+- Consistent pricing across all quotes.
+- Accurate profit tracking.
 
-## About Laravel
+#### Status Flow
+| Status | When It Applies |
+| :--- | :--- |
+| **Draft** | Quote is being created – not yet sent. |
+| **Sent** | Quote has been emailed or printed for client. |
+| **Accepted** | Client has accepted the quote. |
+| **Rejected** | Client rejected the quote. |
+| **Expired** | Valid until date has passed. |
+| **Converted** | Quote has been converted to Income. |
 
-Laravel is a web application framework with expressive, elegant syntax. We believe development must be an enjoyable and creative experience to be truly fulfilling. Laravel takes the pain out of development by easing common tasks used in many web projects, such as:
+#### Convert to Income Process
+1. Quote must be **Accepted**.
+2. Click **"Convert to Income"**.
+3. System creates an Income Transaction with:
+   - Client = Quote's client
+   - Particulars = "Quotation: QT-XXXX"
+   - Gross Price = Quote's total amount
+   - Status = Unpaid
+4. Quote status changes to **Converted**.
+5. User is taken to the Income Edit page to manage payment.
 
-- [Simple, fast routing engine](https://laravel.com/docs/routing).
-- [Powerful dependency injection container](https://laravel.com/docs/container).
-- Multiple back-ends for [session](https://laravel.com/docs/session) and [cache](https://laravel.com/docs/cache) storage.
-- Expressive, intuitive [database ORM](https://laravel.com/docs/eloquent).
-- Database agnostic [schema migrations](https://laravel.com/docs/migrations).
-- [Robust background job processing](https://laravel.com/docs/queues).
-- [Real-time event broadcasting](https://laravel.com/docs/broadcasting).
+---
 
-Laravel is accessible, powerful, and provides tools required for large, robust applications.
+### 9. Reports
 
-## Learning Laravel
+| Aspect | Description |
+| :--- | :--- |
+| **Purpose** | Comprehensive financial reporting and analysis. |
+| **Business Value** | Understand business performance, prepare financial statements, and export data for external use. |
 
-Laravel has the most extensive and thorough [documentation](https://laravel.com/docs) and video tutorial library of all modern web application frameworks, making it a breeze to get started with the framework. You can also check out [Laravel Learn](https://laravel.com/learn), where you will be guided through building a modern Laravel application.
+#### What It Shows
 
-If you don't feel like reading, [Laracasts](https://laracasts.com) can help. Laracasts contains thousands of video tutorials on a range of topics including Laravel, modern PHP, unit testing, and JavaScript. Boost your skills by digging into our comprehensive video library.
+| Section | What It Does |
+| :--- | :--- |
+| **Summary Cards** | Total Income, Total Expenses, Net Profit. |
+| **Income by Category** | Doughnut chart showing revenue distribution. |
+| **Expense by Category** | Doughnut chart showing expense distribution. |
+| **Monthly Trend** | Line chart showing income vs expenses over time. |
+| **Top Clients** | List of top 5 clients by revenue. |
+| **Top Suppliers** | List of top 5 suppliers by expenses. |
+| **Recent Transactions** | Last 50 transactions with details. |
 
-## Laravel Sponsors
+#### Aging Reports
 
-We would like to extend our thanks to the following sponsors for funding Laravel development. If you are interested in becoming a sponsor, please visit the [Laravel Partners program](https://partners.laravel.com).
+| Report | Purpose |
+| :--- | :--- |
+| **Receivables Aging** | Shows outstanding income by age (0-30, 31-60, 61-90, 90+ days). |
+| **Payables Aging** | Shows outstanding expenses by age (0-30, 31-60, 61-90, 90+ days). |
 
-### Premium Partners
+**Export Options:**
+- **CSV** – For Excel/Google Sheets analysis.
+- **PDF** – For printing or sharing.
 
-- **[Vehikl](https://vehikl.com)**
-- **[Tighten Co.](https://tighten.co)**
-- **[Kirschbaum Development Group](https://kirschbaumdevelopment.com)**
-- **[64 Robots](https://64robots.com)**
-- **[Curotec](https://www.curotec.com/services/technologies/laravel)**
-- **[DevSquad](https://devsquad.com/hire-laravel-developers)**
-- **[Redberry](https://redberry.international/laravel-development)**
-- **[Active Logic](https://activelogic.com)**
+---
 
-## Contributing
+### 10. Receivables & Payables
 
-Thank you for considering contributing to the Laravel framework! The contribution guide can be found in the [Laravel documentation](https://laravel.com/docs/contributions).
+| Aspect | Description |
+| :--- | :--- |
+| **Purpose** | Dedicated page for managing what customers owe you and what you owe suppliers. |
+| **Business Value** | Never miss a receivable or payable – all outstanding items in one place with aging alerts. |
 
-## Code of Conduct
+#### What It Shows
 
-In order to ensure that the Laravel community is welcoming to all, please review and abide by the [Code of Conduct](https://laravel.com/docs/contributions#code-of-conduct).
+| Card | What It Tells You |
+| :--- | :--- |
+| **Total Receivables** | All Unpaid + Cash On Hold income. |
+| **Total Payables** | All Unpaid + Pending expenses. |
+| **Net Position** | Receivables - Payables (your net cash position). |
 
-## Security Vulnerabilities
+#### Aging Buckets (Color-Coded)
+| Bucket | Color | Risk Level |
+| :--- | :--- | :--- |
+| 0-30 Days | 🟢 Green | Low risk |
+| 31-60 Days | 🟡 Yellow | Medium risk |
+| 61-90 Days | 🟠 Orange | High risk |
+| 90+ Days | 🔴 Red | Critical risk |
 
-If you discover a security vulnerability within Laravel, please send an e-mail to Taylor Otwell via [taylor@laravel.com](mailto:taylor@laravel.com). All security vulnerabilities will be promptly addressed.
+#### Tables
+| Table | What It Shows |
+| :--- | :--- |
+| **Unpaid Invoices** | All income with status = Unpaid or Cash On Hold. |
+| **Unpaid Expenses** | All expenses with status = Unpaid or Pending. |
 
-## License
+**Action:** Click **"Edit"** on any row to mark it as Paid or update details.
 
-The Laravel framework is open-sourced software licensed under the [MIT license](https://opensource.org/licenses/MIT).
+---
+
+### 11. Users
+
+| Aspect | Description |
+| :--- | :--- |
+| **Purpose** | Manage who can access the system and what they can do. |
+| **Business Value** | Ensure data security, prevent unauthorized changes, and delegate responsibilities appropriately. |
+
+#### Roles & What They Can Do
+
+| Role | Permissions |
+| :--- | :--- |
+| **Super Admin** | Full system access. Can create/delete users, manage settings, view all data. |
+| **Admin** | Full access except user management (can't delete Super Admin). |
+| **Manager** | Can view all data, create/edit income/expenses, view reports. Can create quotations. Cannot delete. |
+| **Staff** | Can view own data, create quotations (using existing items only). Cannot delete or manage users. |
+| **Viewer** | View-only access to own data. |
+
+#### Business Value
+- **Super Admin** – Maintains system integrity.
+- **Admin** – Handles day-to-day operations.
+- **Manager** – Oversees teams without full admin access.
+- **Staff** – Inputs data but can't modify critical settings.
+- **Viewer** – External stakeholders who need to see financials only.
+
+---
+
+### 12. Settings
+
+| Aspect | Description |
+| :--- | :--- |
+| **Purpose** | Configure the system to match your business needs. |
+| **Business Value** | Tailor the system without touching code. |
+
+#### Settings Groups
+
+| Group | What You Can Configure |
+| :--- | :--- |
+| **General** | Company Name, Address, Tax ID. |
+| **Branding** | Upload Logo (custom branding on reports and quotes). |
+| **Financial** | Currency Symbol, Fiscal Year Start, Default Royalty Rate, Default Payment Terms. |
+| **Default Categories** | Income Categories, Expense Categories, Miscellaneous Categories. |
+| **Invoice Numbering** | Invoice Prefix, Next Invoice Number. |
+| **Backup** | Backup Path, Enable Monthly Backup, Run Backup Now. |
+| **IP Whitelist** | Restrict access to specific IPs (security). |
+| **Appearance** | Date Format, Rows per Page, Enable Public Registration. |
+
+#### Business Value
+- **Customize branding** – Make the system look like your company.
+- **Defaults** – Reduce data entry errors with pre-filled values.
+- **Security** – IP whitelist adds an extra layer of security.
+- **Backup** – Never lose data with automated backups.
+
+---
+
+## 👥 User Roles & Permissions
+
+| Permission | Super Admin | Admin | Manager | Staff | Viewer |
+| :--- | :--- | :--- | :--- | :--- | :--- |
+| **Dashboard** | ✅ | ✅ | ✅ | ✅ | ✅ |
+| **Summary** | ✅ | ✅ | ✅ | ✅ | ✅ |
+| **Income** | ✅ | ✅ | ✅ | ✅ | ✅ |
+| **Create/Edit Income** | ✅ | ✅ | ❌ | ❌ | ❌ |
+| **Delete Income** | ✅ | ✅ | ❌ | ❌ | ❌ |
+| **Expenses** | ✅ | ✅ | ✅ | ✅ | ✅ |
+| **Create/Edit Expenses** | ✅ | ✅ | ❌ | ❌ | ❌ |
+| **Delete Expenses** | ✅ | ✅ | ❌ | ❌ | ❌ |
+| **Clients** | ✅ | ✅ | ✅ | ✅ | ✅ |
+| **Create/Edit Clients** | ✅ | ✅ | ✅ | ❌ | ❌ |
+| **Delete Clients** | ✅ | ✅ | ❌ | ❌ | ❌ |
+| **Suppliers** | ✅ | ✅ | ✅ | ✅ | ✅ |
+| **Create/Edit Suppliers** | ✅ | ✅ | ✅ | ❌ | ❌ |
+| **Delete Suppliers** | ✅ | ✅ | ❌ | ❌ | ❌ |
+| **Retainers** | ✅ | ✅ | ✅ | ❌ | ❌ |
+| **Create/Edit Retainers** | ✅ | ✅ | ✅ | ❌ | ❌ |
+| **Delete Retainers** | ✅ | ✅ | ❌ | ❌ | ❌ |
+| **Quotations** | ✅ | ✅ | ✅ | ❌ | ❌ |
+| **Create/Edit Quotations** | ✅ | ✅ | ✅ | ❌ | ❌ |
+| **Delete Quotations** | ✅ | ✅ | ❌ | ❌ | ❌ |
+| **Convert to Income** | ✅ | ✅ | ✅ | ❌ | ❌ |
+| **Reports** | ✅ | ✅ | ✅ | ✅ | ✅ |
+| **Export Reports** | ✅ | ✅ | ❌ | ❌ | ❌ |
+| **Receivables/Payables** | ✅ | ✅ | ✅ | ✅ | ✅ |
+| **Users Management** | ✅ | ✅ | ❌ | ❌ | ❌ |
+| **Settings** | ✅ | ❌ | ❌ | ❌ | ❌ |
+
+---
+
+## 🛠️ Technology Stack
+
+| Layer | Technology | Version |
+| :--- | :--- | :--- |
+| **Backend Framework** | Laravel | 12.x |
+| **Frontend Framework** | Vue 3 | 3.4+ |
+| **Routing** | Inertia.js | 1.0+ |
+| **Styling** | Tailwind CSS | 3.4+ |
+| **Database** | MySQL / MariaDB | 8.0+ / 10.4+ |
+| **Charts** | Chart.js | 4.4+ |
+| **PDF Generation** | DomPDF | 3.0+ |
+| **PHP** | PHP | 8.2+ |
+| **Node.js** | Node | 18+ |
+
+---
+
+## 🚀 Installation Guide
+
+### Prerequisites
+- **PHP** 8.2 or higher
+- **Composer** 2.x
+- **Node.js** 18+ and **npm** 9+
+- **MySQL** 8.0+ or **MariaDB** 10.4+
+- **Web Server** (Apache / Nginx) or use Laravel's built-in server
+
+### Step 1: Clone the Repository
+
+```bash
+git clone https://github.com/yourusername/ieams.git
+cd ieams
+
+Step 2: Install PHP Dependencies
+bash
+composer install
+Step 3: Set Up Environment
+bash
+cp .env.example .env
+php artisan key:generate
+Step 4: Configure Database
+Edit .env file:
+
+env
+DB_CONNECTION=mysql
+DB_HOST=127.0.0.1
+DB_PORT=3306
+DB_DATABASE=ieams
+DB_USERNAME=root
+DB_PASSWORD=your_password_here
+Step 5: Install Frontend Dependencies
+bash
+npm install
+Step 6: Run Migrations & Seeders
+bash
+php artisan migrate --seed
+Step 7: Generate Ziggy Routes (for frontend routing)
+bash
+php artisan ziggy:generate
+Step 8: Build Frontend Assets
+bash
+npm run build  # For production
+# OR
+npm run dev    # For development (with hot reload)
+Step 9: Start the Application
+bash
+php artisan serve
+Step 10: Access the Application
+URL: http://localhost:8000
+
+Default Super Admin Credentials: (check your seeder)
+
+🔧 Environment Configuration
+Key .env Settings
+Variable	Purpose	Example
+APP_NAME	Application name shown in browser tab	"IEAMS"
+APP_ENV	Environment mode (local/production)	"local"
+APP_DEBUG	Show/hide debug errors	"true" (local), "false" (prod)
+APP_URL	Application base URL	"http://localhost:8000"
+DB_HOST	Database server address	"127.0.0.1"
+DB_PORT	Database port	"3306"
+DB_DATABASE	Database name	"ieams"
+DB_USERNAME	Database username	"root"
+DB_PASSWORD	Database password	""
+SESSION_DOMAIN	Session cookie domain (for subdomains)	".localhost"
+SESSION_SECURE_COOKIE	HTTPS only (production)	"true" in prod
+🐛 Troubleshooting
+Error: Table 'ieams.expense_transactions' doesn't exist
+Fix: Run php artisan migrate
+
+Error: Class 'App\Providers\AppServiceProvider' not found
+Fix: Run composer dump-autoload
+
+Error: Page not found: ./Pages/Quotations/Index.vue
+Fix: Ensure all Vue pages exist in resources/js/Pages/ and restart npm run dev
+
+Error: Ziggy route 'receivables-payables.index' not in route list
+Fix: Run php artisan route:clear && php artisan ziggy:generate
+
+Error: 500 Internal Server Error
+Check: Laravel logs in storage/logs/laravel.log
+
+Common fixes: Clear cache (php artisan optimize:clear), check .env database credentials.
+
+Error: Vite development server not running
+Fix: Run npm run dev in a separate terminal.
+
+📄 License
+Proprietary & Confidential
+Unauthorized copying, distribution, modification, or use of this software is strictly prohibited. This system is licensed to the client for internal use only.
+
+📞 Support
+Email: daboy.itexpert@gmail.com
+
+Internal: Open an issue in the development tracker.
+
+This README is now **comprehensive, detailed, and explains the purpose behind every feature** – making it clear why each module exists and how it adds business value. 🚀

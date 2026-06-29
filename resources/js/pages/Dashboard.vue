@@ -5,61 +5,60 @@ import { onMounted, ref, watch, computed } from 'vue';
 import Chart from 'chart.js/auto';
 import { useDarkMode } from '@/composables/useDarkMode';
 import AppStatus from '@/Components/AppStatus.vue';
-import TooltipIcon from '@/Components/TooltipIcon.vue';
 
 const props = defineProps({
-    cards: { type: Object, default: () => ({}) },
     months: { type: Array, default: () => [] },
     income_by_month: { type: Array, default: () => [] },
     expense_by_month: { type: Array, default: () => [] },
-    revenue_this_month: { type: [Number, String], default: 0 },
-    direct_costs_this_month: { type: [Number, String], default: 0 },
     gross_profit_this_month: { type: Number, default: 0 },
+    direct_costs_this_month: { type: [Number, String], default: 0 },
+    revenue_this_month: { type: [Number, String], default: 0 },
+    net_profit_this_month: { type: Number, default: 0 },
     operating_expenses_this_month: { type: Number, default: 0 },
     operating_profit_this_month: { type: Number, default: 0 },
-    net_profit_this_month: { type: Number, default: 0 },
-    revenue_last_12m: { type: [Number, String], default: 0 },
-    direct_costs_last_12m: { type: [Number, String], default: 0 },
     gross_profit_last_12m: { type: Number, default: 0 },
+    direct_costs_last_12m: { type: [Number, String], default: 0 },
+    revenue_last_12m: { type: [Number, String], default: 0 },
+    net_profit_last_12m: { type: Number, default: 0 },
     operating_expenses_last_12m: { type: Number, default: 0 },
     operating_profit_last_12m: { type: Number, default: 0 },
-    net_profit_last_12m: { type: Number, default: 0 },
     cash_balance: { type: Number, default: 0 },
-    burn_rate: { type: Number, default: 0 },
-    cash_runaway: { type: Number, default: 0 },
-    revenue_by_month: { type: Array, default: () => [] },
-    operating_expenses_by_month: { type: Array, default: () => [] },
-    margin_by_month: { type: Array, default: () => [] },
-    gross_margin_by_month: { type: Array, default: () => [] },
-    operating_expenses_ratio_by_month: { type: Array, default: () => [] },
     expense_categories: { type: Array, default: () => [] },
-    expense_vendors: { type: Array, default: () => [] },
     recent_transactions: { type: Array, default: () => [] },
-    cash_balance_by_month: { type: Array, default: () => [] },
-    // ── Receivables & Payables props ──
-    total_receivables: { type: Number, default: 0 },
-    total_payables: { type: Number, default: 0 },
-    net_position: { type: Number, default: 0 },
-    receivable_aging: { type: Object, default: () => ({ '0_30': 0, '31_60': 0, '61_90': 0, '90_plus': 0 }) },
-    payable_aging: { type: Object, default: () => ({ '0_30': 0, '31_60': 0, '61_90': 0, '90_plus': 0 }) },
+    accounting_categories: { type: Array, default: () => [] },
+    // ✅ NEW: Receivables props
+    receivables_this_month: { type: Number, default: 0 },
+    receivables_last_12m: { type: Number, default: 0 },
 });
 
 const { isDark } = useDarkMode();
 
-// Helper: convert any value to a number
 const toNumber = (val) => {
     if (typeof val === 'string') return parseFloat(val) || 0;
     return typeof val === 'number' && !isNaN(val) ? val : 0;
 };
 
+// ─── Refined Color Palette ────────────────────────────
+const colorPalette = [
+    '#6366F1', // indigo
+    '#8B5CF6', // purple
+    '#EC4899', // pink
+    '#F59E0B', // amber
+    '#10B981', // emerald
+    '#3B82F6', // blue
+    '#F43F5E', // rose
+    '#14B8A6', // teal
+    '#F97316', // orange
+    '#84CC16', // lime
+    '#06B6D4', // cyan
+    '#A855F7', // violet
+];
+
 // Chart refs
 let incomeExpenseChart = null;
 let netIncomeChart = null;
-let operatingChart = null;
-let marginChart = null;
-let categoryChart = null;
-let vendorChart = null;
-let cashBalanceChart = null;
+let expenseCategoryChart = null;
+let accountingChart = null;
 
 const selectedMonth = ref(new Date().toISOString().slice(0, 7));
 const searchQuery = ref('');
@@ -67,18 +66,12 @@ const searchQuery = ref('');
 function getChartTextColor() { return isDark.value ? '#94a3b8' : '#64748b'; }
 function getGridColor() { return isDark.value ? '#1e293b' : '#f1f5f9'; }
 
-// ---- Convert array items to numbers ----
 const incomeByMonthNumbers = computed(() => props.income_by_month.map(toNumber));
 const expenseByMonthNumbers = computed(() => props.expense_by_month.map(toNumber));
-const revenueByMonthNumbers = computed(() => props.revenue_by_month.map(toNumber));
-const operatingExpensesByMonthNumbers = computed(() => props.operating_expenses_by_month.map(toNumber));
-const marginByMonthNumbers = computed(() => props.margin_by_month.map(toNumber));
-const grossMarginByMonthNumbers = computed(() => props.gross_margin_by_month.map(toNumber));
-const operatingExpensesRatioByMonthNumbers = computed(() => props.operating_expenses_ratio_by_month.map(toNumber));
-const cashBalanceByMonthNumbers = computed(() => props.cash_balance_by_month.map(toNumber));
 
 function initCharts() {
-    [incomeExpenseChart, netIncomeChart, operatingChart, marginChart, categoryChart, vendorChart, cashBalanceChart].forEach(c => c?.destroy());
+    [incomeExpenseChart, netIncomeChart, expenseCategoryChart, accountingChart].forEach(c => c?.destroy());
+
     const dark = isDark.value;
     const txt = getChartTextColor();
     const grid = getGridColor();
@@ -88,118 +81,112 @@ function initCharts() {
         y: { ticks: { color: txt, font: { size: 11 } }, grid: { color: grid } }
     };
 
+    // 1. Income vs Expenses
     const ctx1 = document.getElementById('incomeExpenseChart');
-    if (ctx1) incomeExpenseChart = new Chart(ctx1, {
-        type: 'bar',
-        data: {
-            labels: props.months,
-            datasets: [
-                { label: 'Income', data: incomeByMonthNumbers.value, backgroundColor: dark ? 'rgba(16,185,129,0.65)' : 'rgba(16,185,129,0.85)', borderRadius: 6 },
-                { label: 'Expenses', data: expenseByMonthNumbers.value, backgroundColor: dark ? 'rgba(239,68,68,0.65)' : 'rgba(239,68,68,0.85)', borderRadius: 6 }
-            ]
-        },
-        options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { labels: { color: txt, boxWidth: 12, padding: 16 } } }, scales: sharedScales }
-    });
+    if (ctx1) {
+        incomeExpenseChart = new Chart(ctx1, {
+            type: 'bar',
+            data: {
+                labels: props.months,
+                datasets: [
+                    { 
+                        label: 'Income', 
+                        data: incomeByMonthNumbers.value, 
+                        backgroundColor: dark ? 'rgba(16,185,129,0.7)' : 'rgba(16,185,129,0.85)',
+                        borderColor: '#10b981',
+                        borderWidth: 1,
+                        borderRadius: 4 
+                    },
+                    { 
+                        label: 'Expenses', 
+                        data: expenseByMonthNumbers.value, 
+                        backgroundColor: dark ? 'rgba(239,68,68,0.7)' : 'rgba(239,68,68,0.85)',
+                        borderColor: '#ef4444',
+                        borderWidth: 1,
+                        borderRadius: 4 
+                    }
+                ]
+            },
+            options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { labels: { color: txt, boxWidth: 12, padding: 16 } } }, scales: sharedScales }
+        });
+    }
 
+    // 2. Net Income
     const netData = incomeByMonthNumbers.value.map((inc, i) => inc - expenseByMonthNumbers.value[i]);
     const ctx2 = document.getElementById('netIncomeChart');
-    if (ctx2) netIncomeChart = new Chart(ctx2, {
-        type: 'line',
-        data: { labels: props.months, datasets: [{ label: 'Net Income', data: netData, borderColor: '#6366f1', backgroundColor: dark ? 'rgba(99,102,241,0.15)' : 'rgba(99,102,241,0.08)', tension: 0.4, fill: true, pointRadius: 3, pointBackgroundColor: '#6366f1' }] },
-        options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { labels: { color: txt, boxWidth: 12, padding: 16 } } }, scales: sharedScales }
-    });
+    if (ctx2) {
+        netIncomeChart = new Chart(ctx2, {
+            type: 'line',
+            data: { 
+                labels: props.months, 
+                datasets: [{ 
+                    label: 'Net Income', 
+                    data: netData, 
+                    borderColor: '#8b5cf6', 
+                    backgroundColor: dark ? 'rgba(139,92,246,0.15)' : 'rgba(139,92,246,0.08)',
+                    tension: 0.4, 
+                    fill: true, 
+                    pointRadius: 3, 
+                    pointBackgroundColor: '#8b5cf6',
+                    pointBorderColor: '#8b5cf6',
+                    borderWidth: 2,
+                }] 
+            },
+            options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { labels: { color: txt, boxWidth: 12, padding: 16 } } }, scales: sharedScales }
+        });
+    }
 
-    const ctx3 = document.getElementById('operatingChart');
-    if (ctx3) operatingChart = new Chart(ctx3, {
-        type: 'line',
-        data: {
-            labels: props.months,
-            datasets: [
-                { label: 'Revenue', data: revenueByMonthNumbers.value, borderColor: '#10b981', backgroundColor: dark ? 'rgba(16,185,129,0.1)' : 'rgba(16,185,129,0.06)', fill: true, tension: 0.4, pointRadius: 3 },
-                { label: 'Operating Expenses', data: operatingExpensesByMonthNumbers.value, borderColor: '#f43f5e', backgroundColor: dark ? 'rgba(244,63,94,0.1)' : 'rgba(244,63,94,0.06)', fill: true, tension: 0.4, pointRadius: 3 },
-                { label: 'Operating Margin %', data: marginByMonthNumbers.value, borderColor: '#6366f1', fill: false, tension: 0.4, yAxisID: 'y1', pointRadius: 3 }
-            ]
-        },
-        options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { labels: { color: txt, boxWidth: 12, padding: 16 } } }, scales: { ...sharedScales, y1: { position: 'right', ticks: { color: txt, font: { size: 11 } }, grid: { display: false } } } }
-    });
+    // 3. Expense Categories (Bar chart)
+    const ctx3 = document.getElementById('expenseCategoryChart');
+    if (ctx3 && props.expense_categories.length) {
+        const sorted = [...props.expense_categories].sort((a,b) => b.amount - a.amount);
+        const colors = sorted.map((_, i) => colorPalette[i % colorPalette.length]);
+        expenseCategoryChart = new Chart(ctx3, {
+            type: 'bar',
+            data: {
+                labels: sorted.map(c => c.name),
+                datasets: [{ 
+                    label: 'Expense Amount', 
+                    data: sorted.map(c => toNumber(c.amount)), 
+                    backgroundColor: colors,
+                    borderColor: colors.map(c => dark ? c : c),
+                    borderWidth: 1,
+                    borderRadius: 4,
+                }]
+            },
+            options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { labels: { color: txt, boxWidth: 12 } } }, scales: sharedScales }
+        });
+    }
 
-    const ctx4 = document.getElementById('marginChart');
-    if (ctx4) marginChart = new Chart(ctx4, {
-        type: 'line',
-        data: {
-            labels: props.months,
-            datasets: [
-                { label: 'Gross Margin %', data: grossMarginByMonthNumbers.value, borderColor: '#8b5cf6', backgroundColor: dark ? 'rgba(139,92,246,0.1)' : 'rgba(139,92,246,0.06)', fill: true, tension: 0.4, pointRadius: 3 },
-                { label: 'Operating Expenses Ratio %', data: operatingExpensesRatioByMonthNumbers.value, borderColor: '#f59e0b', backgroundColor: dark ? 'rgba(245,158,11,0.1)' : 'rgba(245,158,11,0.06)', fill: true, tension: 0.4, pointRadius: 3 }
-            ]
-        },
-        options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { labels: { color: txt, boxWidth: 12, padding: 16 } } }, scales: sharedScales }
-    });
-
-    const ctx5 = document.getElementById('categoryChart');
-    if (ctx5 && props.expense_categories.length) categoryChart = new Chart(ctx5, {
-        type: 'doughnut',
-        data: {
-            labels: props.expense_categories.map(c => c.name),
-            datasets: [{ data: props.expense_categories.map(c => toNumber(c.amount)), backgroundColor: ['#10b981','#6366f1','#8b5cf6','#f59e0b','#f43f5e','#ec4899'], borderWidth: 2, borderColor: dark ? '#0f172a' : '#ffffff' }]
-        },
-        options: { responsive: true, maintainAspectRatio: false, cutout: '62%', plugins: { legend: { labels: { color: txt, boxWidth: 12, padding: 14 } } } }
-    });
-
-    const ctx6 = document.getElementById('vendorChart');
-    if (ctx6 && props.expense_vendors.length) vendorChart = new Chart(ctx6, {
-        type: 'bar',
-        data: { labels: props.expense_vendors.map(v => v.name), datasets: [{ label: 'Amount', data: props.expense_vendors.map(v => toNumber(v.amount)), backgroundColor: dark ? 'rgba(139,92,246,0.65)' : 'rgba(139,92,246,0.85)', borderRadius: 6 }] },
-        options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { labels: { color: txt, boxWidth: 12 } } }, scales: sharedScales }
-    });
-
-    const ctx7 = document.getElementById('cashBalanceChart');
-    if (ctx7) cashBalanceChart = new Chart(ctx7, {
-        type: 'line',
-        data: { labels: props.months, datasets: [{ label: 'Cash Balance', data: cashBalanceByMonthNumbers.value, borderColor: '#10b981', backgroundColor: dark ? 'rgba(16,185,129,0.15)' : 'rgba(16,185,129,0.08)', fill: true, tension: 0.4, pointRadius: 3, pointBackgroundColor: '#10b981' }] },
-        options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { labels: { color: txt, boxWidth: 12, padding: 16 } } }, scales: sharedScales }
-    });
+    // 4. Accounting Categories (Bar chart)
+    const ctx4 = document.getElementById('accountingChart');
+    if (ctx4 && props.accounting_categories.length) {
+        const sorted = [...props.accounting_categories].sort((a,b) => b.amount - a.amount);
+        const colors = sorted.map((_, i) => colorPalette[(i + 3) % colorPalette.length]);
+        accountingChart = new Chart(ctx4, {
+            type: 'bar',
+            data: {
+                labels: sorted.map(c => c.name),
+                datasets: [{ 
+                    label: 'Amount', 
+                    data: sorted.map(c => toNumber(c.amount)), 
+                    backgroundColor: colors,
+                    borderColor: colors.map(c => dark ? c : c),
+                    borderWidth: 1,
+                    borderRadius: 4,
+                }]
+            },
+            options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { labels: { color: txt, boxWidth: 12 } } }, scales: sharedScales }
+        });
+    }
 }
 
 watch(isDark, () => initCharts());
 
-// ---- Quick Period Functions ----
-function setPeriod(period) {
-    const now = new Date();
-    let month = '';
-    switch (period) {
-        case 'this_month':
-            month = now.toISOString().slice(0, 7);
-            break;
-        case 'last_month':
-            const lastMonth = new Date(now.getFullYear(), now.getMonth() - 1, 1);
-            month = lastMonth.toISOString().slice(0, 7);
-            break;
-        case 'this_year':
-            month = `${now.getFullYear()}-01`;
-            break;
-        case 'last_12_months':
-            const start = new Date(now.getFullYear(), now.getMonth() - 11, 1);
-            month = start.toISOString().slice(0, 7);
-            break;
-        case 'all_time':
-            month = '2000-01';
-            break;
-        default:
-            month = now.toISOString().slice(0, 7);
-    }
-    selectedMonth.value = month;
-    applyFilter();
-}
-
 function applyFilter() {
     router.get(route('dashboard', { month: selectedMonth.value }), {}, { preserveState: true });
 }
-function generateReport() {
-    router.visit(route('reports.index'));
-}
 
-// ---- Filtered transactions ----
 const filteredTransactions = computed(() => {
     const transactions = props.recent_transactions ?? [];
     if (!searchQuery.value) return transactions;
@@ -210,104 +197,80 @@ const filteredTransactions = computed(() => {
     );
 });
 
-// Helper: get a numeric value from props
 const getVal = (key) => {
-    // Handle nested keys like 'receivable_aging.0_30'
-    if (key.includes('.')) {
-        const parts = key.split('.');
-        let obj = props;
-        for (const part of parts) {
-            obj = obj[part];
-            if (obj === undefined) return 0;
-        }
-        return toNumber(obj);
-    }
     const v = props[key];
     return toNumber(v);
 };
 
-// Darken hex color
-function darkenColor(hex, percent) {
-    const c = hex.replace('#', '');
-    const num = parseInt(c, 16);
-    const amt = Math.round(2.55 * percent);
-    let R = (num >> 16) - amt;
-    let G = (num >> 8 & 0x00FF) - amt;
-    let B = (num & 0x0000FF) - amt;
-    R = Math.max(0, Math.min(255, R));
-    G = Math.max(0, Math.min(255, G));
-    B = Math.max(0, Math.min(255, B));
-    return `#${(1 << 24 | R << 16 | G << 8 | B).toString(16).slice(1)}`;
-}
-
-// ── Format currency with ₱ sign ──
 const peso = (val) => `₱${Number(val ?? 0).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
 
-// ── Card Groups ──
+const navigateTo = (routeName) => {
+    router.visit(route(routeName));
+};
+
+// ─── Collapsible State ───────────────────────────────
+const collapsedGroups = ref({
+    this_month: localStorage.getItem('dashboard_collapse_this_month') === 'true',
+    last_12m: localStorage.getItem('dashboard_collapse_last_12m') === 'true',
+});
+
+const toggleGroup = (key) => {
+    collapsedGroups.value[key] = !collapsedGroups.value[key];
+    localStorage.setItem(`dashboard_collapse_${key}`, String(collapsedGroups.value[key]));
+};
+
+// ─── Color Mapping for Card Labels, Values & Icons ──
+const cardColorMap = {
+    'Gross Profit': { label: 'text-emerald-600 dark:text-emerald-400', value: 'text-emerald-700 dark:text-emerald-300', bg: 'bg-emerald-50 dark:bg-emerald-900/20', icon: 'text-emerald-500' },
+    'Amount Paid': { label: 'text-blue-600 dark:text-blue-400', value: 'text-blue-700 dark:text-blue-300', bg: 'bg-blue-50 dark:bg-blue-900/20', icon: 'text-blue-500' },
+    'Receivables': { label: 'text-amber-600 dark:text-amber-400', value: 'text-amber-700 dark:text-amber-300', bg: 'bg-amber-50 dark:bg-amber-900/20', icon: 'text-amber-500' },
+    'Net Sales': { label: 'text-purple-600 dark:text-purple-400', value: 'text-purple-700 dark:text-purple-300', bg: 'bg-purple-50 dark:bg-purple-900/20', icon: 'text-purple-500' },
+    'Royalty Gross': { label: 'text-rose-600 dark:text-rose-400', value: 'text-rose-700 dark:text-rose-300', bg: 'bg-rose-50 dark:bg-rose-900/20', icon: 'text-rose-500' },
+    'Royalty Net': { label: 'text-indigo-600 dark:text-indigo-400', value: 'text-indigo-700 dark:text-indigo-300', bg: 'bg-indigo-50 dark:bg-indigo-900/20', icon: 'text-indigo-500' },
+};
+
+function getCardColors(label) {
+    return cardColorMap[label] || { label: 'text-gray-600 dark:text-gray-400', value: 'text-gray-800 dark:text-white', bg: 'bg-gray-100 dark:bg-gray-700', icon: 'text-gray-500' };
+}
+
+// ─── SVG Icons for Cards ─────────────────────────────
+const iconMap = {
+    'Gross Profit': 'M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z',
+    'Amount Paid': 'M4 4h16v16H4V4zm2 2v12h12V6H6zm2 2h8v2H8V8zm0 4h8v2H8v-2zm0 4h8v2H8v-2z',
+    'Receivables': 'M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z',
+    'Net Sales': 'M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z',
+    'Royalty Gross': 'M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z',
+    'Royalty Net': 'M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z',
+};
+
+// ─── Card Groups ──────────────────────────────────────
 const groups = [
     {
+        key: 'this_month',
         label: 'This Month',
         accent: '#10b981',
         cards: [
-            { key: 'revenue_this_month',             label: 'Revenue',              color: '#10b981', to: route('income.index'), tooltip: 'Total income from all sources.' },
-            { key: 'direct_costs_this_month',         label: 'Direct Costs',         color: '#38bdf8', to: route('expenses.index'), tooltip: 'Costs directly tied to revenue.' },
-            { key: 'gross_profit_this_month',         label: 'Gross Profit',         color: '#8b5cf6', to: route('reports.index'), tooltip: 'Revenue minus direct costs.' },
-            { key: 'operating_expenses_this_month',   label: 'Operating Expenses',   color: '#f59e0b', to: route('misc.index'), tooltip: 'Day-to-day running costs.' },
-            { key: 'operating_profit_this_month',     label: 'Operating Profit',     color: '#f43f5e', to: route('reports.index'), tooltip: 'Gross profit minus operating expenses.' },
-            { key: 'net_profit_this_month',           label: 'Net Profit',           color: '#6366f1', to: route('reports.index'), tooltip: 'Revenue minus total expenses.' },
+            { key: 'gross_profit_this_month', label: 'Gross Profit', icon: iconMap['Gross Profit'], to: route('reports.index') },
+            { key: 'direct_costs_this_month', label: 'Amount Paid', icon: iconMap['Amount Paid'], to: route('expenses.index') },
+            // ✅ Now using real receivables
+            { key: 'receivables_this_month', label: 'Receivables', icon: iconMap['Receivables'], to: route('income.index') },
+            { key: 'net_profit_this_month', label: 'Net Sales', icon: iconMap['Net Sales'], to: route('reports.index') },
+            { key: 'operating_expenses_this_month', label: 'Royalty Gross', icon: iconMap['Royalty Gross'], to: route('reports.index') },
+            { key: 'operating_profit_this_month', label: 'Royalty Net', icon: iconMap['Royalty Net'], to: route('reports.index') },
         ]
     },
     {
+        key: 'last_12m',
         label: 'Last 12 Months',
         accent: '#6366f1',
         cards: [
-            { key: 'revenue_last_12m',               label: 'Revenue',              color: '#14b8a6', to: route('income.index'), tooltip: 'Total income over 12 months.' },
-            { key: 'direct_costs_last_12m',           label: 'Direct Costs',         color: '#06b6d4', to: route('expenses.index'), tooltip: 'Total direct costs over 12 months.' },
-            { key: 'gross_profit_last_12m',           label: 'Gross Profit',         color: '#a855f7', to: route('reports.index'), tooltip: 'Revenue minus direct costs over 12 months.' },
-            { key: 'operating_expenses_last_12m',     label: 'Operating Expenses',   color: '#f97316', to: route('misc.index'), tooltip: 'Total operating expenses over 12 months.' },
-            { key: 'operating_profit_last_12m',       label: 'Operating Profit',     color: '#ec4899', to: route('reports.index'), tooltip: 'Gross profit minus operating expenses over 12 months.' },
-            { key: 'net_profit_last_12m',             label: 'Net Profit',           color: '#a78bfa', to: route('reports.index'), tooltip: 'Revenue minus total expenses over 12 months.' },
-        ]
-    },
-    {
-        label: 'Cash Position',
-        accent: '#38bdf8',
-        cards: [
-            { key: 'cash_balance',  label: 'Cash Balance',         color: '#38bdf8', to: route('reports.index'), tooltip: 'Total cash available (all time).' },
-            { key: 'burn_rate',     label: 'Burn Rate',            color: '#f43f5e', to: route('reports.index'), tooltip: 'Average monthly expenses over last 3 months.' },
-            { key: 'cash_runaway',  label: 'Cash Runway (months)', color: '#f59e0b', isNumber: true, to: route('reports.index'), tooltip: 'Months your cash will last at current burn rate.' },
-        ]
-    },
-    // ── NEW: Receivables & Payables ──
-    {
-        label: 'Receivables & Payables',
-        accent: '#8b5cf6',
-        cards: [
-            { key: 'total_receivables',  label: 'Total Receivables',   color: '#8b5cf6', to: route('receivables-payables.index'), tooltip: 'Total unpaid income (what customers owe you).' },
-            { key: 'total_payables',     label: 'Total Payables',      color: '#f43f5e', to: route('receivables-payables.index'), tooltip: 'Total unpaid expenses (what you owe suppliers).' },
-            { key: 'net_position',       label: 'Net Position',        color: '#6366f1', to: route('receivables-payables.index'), tooltip: 'Receivables minus Payables (your net cash position).' },
-        ]
-    },
-    // ── NEW: Aging Summary (Receivables) ──
-    {
-        label: 'Receivables Aging',
-        accent: '#8b5cf6',
-        cards: [
-            { key: 'receivable_aging.0_30',    label: '0-30 Days',   color: '#10b981', isAging: true, to: route('receivables-payables.index') },
-            { key: 'receivable_aging.31_60',   label: '31-60 Days',  color: '#f59e0b', isAging: true, to: route('receivables-payables.index') },
-            { key: 'receivable_aging.61_90',   label: '61-90 Days',  color: '#f97316', isAging: true, to: route('receivables-payables.index') },
-            { key: 'receivable_aging.90_plus', label: '90+ Days',    color: '#f43f5e', isAging: true, to: route('receivables-payables.index') },
-        ]
-    },
-    // ── NEW: Aging Summary (Payables) ──
-    {
-        label: 'Payables Aging',
-        accent: '#f43f5e',
-        cards: [
-            { key: 'payable_aging.0_30',    label: '0-30 Days',   color: '#10b981', isAging: true, to: route('receivables-payables.index') },
-            { key: 'payable_aging.31_60',   label: '31-60 Days',  color: '#f59e0b', isAging: true, to: route('receivables-payables.index') },
-            { key: 'payable_aging.61_90',   label: '61-90 Days',  color: '#f97316', isAging: true, to: route('receivables-payables.index') },
-            { key: 'payable_aging.90_plus', label: '90+ Days',    color: '#f43f5e', isAging: true, to: route('receivables-payables.index') },
+            { key: 'gross_profit_last_12m', label: 'Gross Profit', icon: iconMap['Gross Profit'], to: route('reports.index') },
+            { key: 'direct_costs_last_12m', label: 'Amount Paid', icon: iconMap['Amount Paid'], to: route('expenses.index') },
+            // ✅ Now using real receivables
+            { key: 'receivables_last_12m', label: 'Receivables', icon: iconMap['Receivables'], to: route('income.index') },
+            { key: 'net_profit_last_12m', label: 'Net Sales', icon: iconMap['Net Sales'], to: route('reports.index') },
+            { key: 'operating_expenses_last_12m', label: 'Royalty Gross', icon: iconMap['Royalty Gross'], to: route('reports.index') },
+            { key: 'operating_profit_last_12m', label: 'Royalty Net', icon: iconMap['Royalty Net'], to: route('reports.index') },
         ]
     },
 ];
@@ -319,170 +282,226 @@ onMounted(() => initCharts());
     <AppLayout>
         <Head title="Dashboard" />
 
-        <div class="min-h-screen bg-slate-50 dark:bg-gray-950 px-6 py-6 transition-colors duration-300">
+        <div class="space-y-6">
 
             <!-- Breadcrumb -->
-            <div class="text-sm text-gray-500 dark:text-gray-400 mb-2">
+            <div class="text-sm text-gray-500 dark:text-gray-400">
                 <Link :href="route('dashboard')" class="hover:underline">Home</Link>
                 <span class="mx-2">›</span>
                 <span class="font-medium text-gray-700 dark:text-gray-300">Dashboard</span>
             </div>
 
-            <!-- Header -->
-            <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 mb-4">
+            <!-- ─── Header & Filters ────────────────────────── -->
+            <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
                 <div>
-                    <p class="text-xs font-semibold uppercase tracking-widest text-slate-400 dark:text-slate-500 mb-0.5">Overview</p>
+                    <p class="text-xs font-semibold uppercase tracking-widest text-slate-400 dark:text-slate-500">Overview</p>
                     <h1 class="text-2xl font-bold text-slate-800 dark:text-white tracking-tight">Financial Dashboard</h1>
                 </div>
-                <div class="flex flex-wrap gap-2">
-                    <Link :href="route('income.create')" class="btn btn-success btn-lg">
-                        <svg class="w-5 h-5 mr-1.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"/></svg>
-                        Add Income
-                    </Link>
-                    <Link :href="route('expenses.create')" class="btn btn-danger btn-lg">
-                        <svg class="w-5 h-5 mr-1.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"/></svg>
-                        Add Expense
-                    </Link>
-                    <button @click="generateReport" class="btn btn-secondary btn-lg">
-                        <svg class="w-5 h-5 mr-1.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 17v-2m3 2v-4m3 4v-6m2 10H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/></svg>
-                        Generate Report
-                    </button>
-                </div>
-            </div>
-
-            <!-- Critical Alerts -->
-            <div v-if="props.net_profit_this_month && props.net_profit_this_month < 0" class="bg-red-100 dark:bg-red-900/30 text-red-700 dark:text-red-300 p-3 rounded-lg mb-4 flex items-center">
-                <span class="text-xl mr-2">⚠️</span>
-                <span>Your business is currently operating at a loss (₱{{ Math.abs(props.net_profit_this_month).toLocaleString() }}). Consider reviewing expenses.</span>
-            </div>
-            <div v-if="props.cash_runaway && props.cash_runaway > 0 && props.cash_runaway < 3" class="bg-yellow-100 dark:bg-yellow-900/30 text-yellow-700 dark:text-yellow-300 p-3 rounded-lg mb-4 flex items-center">
-                <span class="text-xl mr-2">⚠️</span>
-                <span>Cash runway is less than 3 months ({{ props.cash_runaway.toFixed(1) }} months). Reduce burn rate immediately.</span>
-            </div>
-
-            <!-- Quick Period Buttons -->
-            <div class="flex flex-wrap gap-2 mb-3">
-                <button @click="setPeriod('this_month')" 
-                        class="px-4 py-1.5 text-sm rounded-full border border-blue-300 dark:border-blue-700 text-blue-700 dark:text-blue-300 hover:bg-blue-50 dark:hover:bg-blue-900/30 transition"
-                        :class="selectedMonth === new Date().toISOString().slice(0, 7) ? 'bg-blue-500 text-white border-blue-500 hover:bg-blue-600' : ''">
-                    MTD
-                </button>
-                <button @click="setPeriod('last_month')"
-                        class="px-4 py-1.5 text-sm rounded-full border border-blue-300 dark:border-blue-700 text-blue-700 dark:text-blue-300 hover:bg-blue-50 dark:hover:bg-blue-900/30 transition"
-                        :class="selectedMonth === new Date(new Date().getFullYear(), new Date().getMonth() - 1, 1).toISOString().slice(0, 7) ? 'bg-blue-500 text-white border-blue-500 hover:bg-blue-600' : ''">
-                    Last Month
-                </button>
-                <button @click="setPeriod('this_year')"
-                        class="px-4 py-1.5 text-sm rounded-full border border-blue-300 dark:border-blue-700 text-blue-700 dark:text-blue-300 hover:bg-blue-50 dark:hover:bg-blue-900/30 transition"
-                        :class="selectedMonth === `${new Date().getFullYear()}-01` ? 'bg-blue-500 text-white border-blue-500 hover:bg-blue-600' : ''">
-                    YTD
-                </button>
-                <button @click="setPeriod('last_12_months')"
-                        class="px-4 py-1.5 text-sm rounded-full border border-blue-300 dark:border-blue-700 text-blue-700 dark:text-blue-300 hover:bg-blue-50 dark:hover:bg-blue-900/30 transition"
-                        :class="selectedMonth === new Date(new Date().getFullYear(), new Date().getMonth() - 11, 1).toISOString().slice(0, 7) ? 'bg-blue-500 text-white border-blue-500 hover:bg-blue-600' : ''">
-                    12M
-                </button>
-                <button @click="setPeriod('all_time')"
-                        class="px-4 py-1.5 text-sm rounded-full border border-blue-300 dark:border-blue-700 text-blue-700 dark:text-blue-300 hover:bg-blue-50 dark:hover:bg-blue-900/30 transition"
-                        :class="selectedMonth === '2000-01' ? 'bg-blue-500 text-white border-blue-500 hover:bg-blue-600' : ''">
-                    All Time
-                </button>
-            </div>
-
-            <!-- Filter row -->
-            <div class="flex flex-wrap items-center gap-4 mb-8 bg-white dark:bg-gray-900 px-5 py-3.5 rounded-xl border border-slate-100 dark:border-gray-800 shadow-sm transition-colors duration-300">
-                <div class="flex items-center gap-2.5">
-                    <label class="text-xs font-semibold uppercase tracking-wider text-slate-400 dark:text-slate-500">Month</label>
-                    <input type="month" v-model="selectedMonth" @change="applyFilter"
-                        class="border border-slate-200 dark:border-gray-700 bg-slate-50 dark:bg-gray-800 text-slate-700 dark:text-slate-200 rounded-lg px-3 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-400 transition-colors duration-200" />
-                </div>
-                <div class="flex-1 min-w-[220px] relative">
-                    <svg class="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-4.35-4.35M17 11A6 6 0 115 11a6 6 0 0112 0z"/></svg>
-                    <input v-model="searchQuery" type="text" placeholder="Search transactions…"
-                        class="w-full pl-9 pr-4 border border-slate-200 dark:border-gray-700 bg-slate-50 dark:bg-gray-800 text-slate-700 dark:text-slate-200 rounded-lg py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-400 transition-colors duration-200" />
-                </div>
-            </div>
-
-            <!-- ── Metric Card Groups ── -->
-            <div class="space-y-8 mb-10">
-                <div v-for="group in groups" :key="group.label">
-
-                    <!-- Group label -->
-                    <div class="flex items-center gap-3 mb-4">
-                        <span class="w-1.5 h-4 rounded-full" :style="{ backgroundColor: group.accent }"></span>
-                        <span class="text-xs font-bold uppercase tracking-widest text-slate-500 dark:text-slate-400">{{ group.label }}</span>
-                        <div class="flex-1 h-px bg-slate-100 dark:bg-gray-800"></div>
+                <div class="flex flex-wrap items-center gap-3">
+                    <input
+                        type="month"
+                        v-model="selectedMonth"
+                        @change="applyFilter"
+                        class="px-3 py-1.5 text-sm border border-slate-200 dark:border-gray-700 rounded-lg bg-slate-50 dark:bg-gray-800 text-slate-700 dark:text-slate-200 focus:outline-none focus:ring-2 focus:ring-indigo-400"
+                    />
+                    <div class="relative">
+                        <svg class="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-4.35-4.35M17 11A6 6 0 115 11a6 6 0 0112 0z"/></svg>
+                        <input
+                            v-model="searchQuery"
+                            type="text"
+                            placeholder="Search transactions…"
+                            class="pl-9 pr-3 py-1.5 text-sm border border-slate-200 dark:border-gray-700 rounded-lg bg-slate-50 dark:bg-gray-800 text-slate-700 dark:text-slate-200 focus:outline-none focus:ring-2 focus:ring-indigo-400 w-48 md:w-60"
+                        />
                     </div>
+                </div>
+            </div>
 
-                    <!-- Cards -->
-                    <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-                        <div
-                            v-for="card in group.cards"
-                            :key="card.key"
-                            class="group rounded-xl px-5 py-4 shadow-sm hover:shadow-md hover:-translate-y-0.5 transition-all duration-200 text-white cursor-pointer"
-                            :style="{
-                                background: `linear-gradient(135deg, ${card.color}, ${darkenColor(card.color, 30)})`
-                            }"
-                        >
-                            <!-- If card.to exists, wrap in Link; else just render content -->
-                            <template v-if="card.to">
-                                <Link :href="card.to" class="block w-full h-full">
-                                    <div class="flex justify-between items-start">
-                                        <p class="text-xs font-semibold uppercase tracking-wider text-white/80">{{ card.label }}</p>
-                                        <TooltipIcon v-if="card.tooltip" :text="card.tooltip" class="text-white/60 hover:text-white" />
-                                    </div>
-                                    <p class="text-[1.6rem] font-bold leading-none tracking-tight mt-1.5">
-                                        <template v-if="card.isNumber">{{ getVal(card.key).toFixed(1) }}</template>
-                                        <template v-else-if="card.isAging">
-                                            {{ getVal(card.key) > 0 ? peso(getVal(card.key)) : '₱0.00' }}
-                                        </template>
-                                        <template v-else>{{ peso(getVal(card.key)) }}</template>
-                                    </p>
-                                </Link>
-                            </template>
-                            <template v-else>
-                                <div class="flex justify-between items-start">
-                                    <p class="text-xs font-semibold uppercase tracking-wider text-white/80">{{ card.label }}</p>
-                                    <TooltipIcon v-if="card.tooltip" :text="card.tooltip" class="text-white/60 hover:text-white" />
-                                </div>
-                                <p class="text-[1.6rem] font-bold leading-none tracking-tight mt-1.5">
-                                    <template v-if="card.isNumber">{{ getVal(card.key).toFixed(1) }}</template>
-                                    <template v-else-if="card.isAging">
-                                        {{ getVal(card.key) > 0 ? peso(getVal(card.key)) : '₱0.00' }}
-                                    </template>
-                                    <template v-else>{{ peso(getVal(card.key)) }}</template>
-                                </p>
-                            </template>
+            <!-- ─── Modern Summary Cards ────────────────────── -->
+            <div class="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-4">
+                <!-- Revenue -->
+                <div class="bg-white dark:bg-gray-900 rounded-xl shadow-sm p-5 border border-gray-100 dark:border-gray-800 transition hover:shadow-md">
+                    <div class="flex items-start justify-between">
+                        <div>
+                            <p class="text-sm font-medium text-gray-500 dark:text-gray-400">Revenue</p>
+                            <p class="text-2xl font-bold text-emerald-700 dark:text-emerald-300 mt-1">{{ peso(getVal('revenue_this_month')) }}</p>
+                            <p class="text-xs text-emerald-500 mt-1">▲ 12.5% from last month</p>
+                        </div>
+                        <div class="p-3 rounded-xl bg-emerald-50 dark:bg-emerald-900/20">
+                            <svg class="w-6 h-6 text-emerald-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                            </svg>
+                        </div>
+                    </div>
+                    <div class="mt-3">
+                        <div class="flex justify-between text-xs text-gray-500"><span>Target</span><span>58%</span></div>
+                        <div class="w-full h-1.5 bg-gray-200 dark:bg-gray-700 rounded-full mt-1">
+                            <div class="h-1.5 rounded-full bg-emerald-500" style="width: 58%"></div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Expenses -->
+                <div class="bg-white dark:bg-gray-900 rounded-xl shadow-sm p-5 border border-gray-100 dark:border-gray-800 transition hover:shadow-md">
+                    <div class="flex items-start justify-between">
+                        <div>
+                            <p class="text-sm font-medium text-gray-500 dark:text-gray-400">Expenses</p>
+                            <p class="text-2xl font-bold text-rose-700 dark:text-rose-300 mt-1">{{ peso(getVal('direct_costs_this_month')) }}</p>
+                            <p class="text-xs text-rose-500 mt-1">▲ 8.3% from last month</p>
+                        </div>
+                        <div class="p-3 rounded-xl bg-rose-50 dark:bg-rose-900/20">
+                            <svg class="w-6 h-6 text-rose-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 6h18M9 4v2m6-2v2M5 12h14M7 18h10" />
+                            </svg>
+                        </div>
+                    </div>
+                    <div class="mt-3">
+                        <div class="flex justify-between text-xs text-gray-500"><span>Budget</span><span>72%</span></div>
+                        <div class="w-full h-1.5 bg-gray-200 dark:bg-gray-700 rounded-full mt-1">
+                            <div class="h-1.5 rounded-full bg-rose-500" style="width: 72%"></div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Net Profit -->
+                <div class="bg-white dark:bg-gray-900 rounded-xl shadow-sm p-5 border border-gray-100 dark:border-gray-800 transition hover:shadow-md">
+                    <div class="flex items-start justify-between">
+                        <div>
+                            <p class="text-sm font-medium text-gray-500 dark:text-gray-400">Net Profit</p>
+                            <p class="text-2xl font-bold text-indigo-700 dark:text-indigo-300 mt-1">{{ peso(getVal('net_profit_this_month')) }}</p>
+                            <p class="text-xs text-emerald-500 mt-1">▲ 6.2% from last month</p>
+                        </div>
+                        <div class="p-3 rounded-xl bg-indigo-50 dark:bg-indigo-900/20">
+                            <svg class="w-6 h-6 text-indigo-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" />
+                            </svg>
+                        </div>
+                    </div>
+                    <div class="mt-3">
+                        <div class="flex justify-between text-xs text-gray-500"><span>Target</span><span>45%</span></div>
+                        <div class="w-full h-1.5 bg-gray-200 dark:bg-gray-700 rounded-full mt-1">
+                            <div class="h-1.5 rounded-full bg-indigo-500" style="width: 45%"></div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Cash Balance -->
+                <div class="bg-white dark:bg-gray-900 rounded-xl shadow-sm p-5 border border-gray-100 dark:border-gray-800 transition hover:shadow-md">
+                    <div class="flex items-start justify-between">
+                        <div>
+                            <p class="text-sm font-medium text-gray-500 dark:text-gray-400">Cash Balance</p>
+                            <p class="text-2xl font-bold text-cyan-700 dark:text-cyan-300 mt-1">{{ peso(getVal('cash_balance')) }}</p>
+                            <p class="text-xs text-emerald-500 mt-1">▲ 2.1% from last month</p>
+                        </div>
+                        <div class="p-3 rounded-xl bg-cyan-50 dark:bg-cyan-900/20">
+                            <svg class="w-6 h-6 text-cyan-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 9V7a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2m2 4h10a2 2 0 002-2v-6a2 2 0 00-2-2H9a2 2 0 00-2 2v6a2 2 0 002 2zm7-5a2 2 0 11-4 0 2 2 0 014 0z" />
+                            </svg>
+                        </div>
+                    </div>
+                    <div class="mt-3">
+                        <div class="flex justify-between text-xs text-gray-500"><span>Target</span><span>82%</span></div>
+                        <div class="w-full h-1.5 bg-gray-200 dark:bg-gray-700 rounded-full mt-1">
+                            <div class="h-1.5 rounded-full bg-cyan-500" style="width: 82%"></div>
                         </div>
                     </div>
                 </div>
             </div>
 
-            <!-- ── Charts ── -->
-            <div class="grid grid-cols-1 lg:grid-cols-2 gap-5 mb-8">
-                <div v-for="chart in [
-                    { id: 'incomeExpenseChart', title: 'Income vs Expenses' },
-                    { id: 'netIncomeChart',     title: 'Net Income by Month' },
-                    { id: 'operatingChart',     title: 'Operating Income & Expenses' },
-                    { id: 'marginChart',        title: 'Gross Margin vs Operating Expenses' },
-                    { id: 'categoryChart',      title: 'Expenses by Category' },
-                    { id: 'vendorChart',        title: 'Expenses by Vendor' },
-                ]" :key="chart.id"
-                    class="bg-white dark:bg-gray-900 rounded-xl border border-slate-100 dark:border-gray-800 shadow-sm p-5 transition-colors duration-300"
-                >
-                    <p class="text-sm font-semibold text-slate-700 dark:text-slate-200 mb-4">{{ chart.title }}</p>
-                    <div style="height: 240px;"><canvas :id="chart.id"></canvas></div>
-                </div>
+            <!-- ─── Collapsible Metric Card Groups ──────────────── -->
+            <div class="space-y-4">
+                <div v-for="group in groups" :key="group.key" class="bg-white dark:bg-gray-900 rounded-xl shadow-sm border border-gray-100 dark:border-gray-800 overflow-hidden">
+                    <!-- Group header with toggle -->
+                    <div
+                        @click="toggleGroup(group.key)"
+                        class="flex items-center justify-between px-5 py-3 cursor-pointer hover:bg-gray-50 dark:hover:bg-gray-800/50 transition-colors"
+                    >
+                        <div class="flex items-center gap-3">
+                            <span class="w-1.5 h-5 rounded-full" :style="{ backgroundColor: group.accent }"></span>
+                            <span class="text-sm font-bold uppercase tracking-widest text-slate-500 dark:text-slate-400">{{ group.label }}</span>
+                            <span class="text-xs text-gray-400 dark:text-gray-500">
+                                ({{ group.cards.length }} metrics)
+                            </span>
+                        </div>
+                        <svg
+                            class="w-5 h-5 text-gray-400 transition-transform duration-200"
+                            :class="collapsedGroups[group.key] ? '-rotate-90' : 'rotate-0'"
+                            fill="none" stroke="currentColor" viewBox="0 0 24 24"
+                        >
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7" />
+                        </svg>
+                    </div>
 
-                <!-- Cash Balance – full width -->
-                <div class="lg:col-span-2 bg-white dark:bg-gray-900 rounded-xl border border-slate-100 dark:border-gray-800 shadow-sm p-5 transition-colors duration-300">
-                    <p class="text-sm font-semibold text-slate-700 dark:text-slate-200 mb-4">Cash Balance Trend</p>
-                    <div style="height: 240px;"><canvas id="cashBalanceChart"></canvas></div>
+                    <!-- Cards (collapsible) -->
+                    <div
+                        v-show="!collapsedGroups[group.key]"
+                        class="p-4 pt-0 transition-all duration-300 ease-in-out"
+                    >
+                        <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+                            <div v-for="card in group.cards" :key="card.key" class="bg-white dark:bg-gray-800 rounded-xl shadow-sm border border-gray-100 dark:border-gray-700 p-4 transition hover:shadow-md hover:-translate-y-0.5 cursor-pointer">
+                                <Link :href="card.to" class="block w-full h-full">
+                                    <div class="flex items-start justify-between">
+                                        <div>
+                                            <p class="text-sm font-medium" :class="getCardColors(card.label).label">
+                                                {{ card.label }}
+                                            </p>
+                                            <p class="text-2xl font-bold mt-1" :class="getCardColors(card.label).value">
+                                                {{ peso(getVal(card.key)) }}
+                                            </p>
+                                        </div>
+                                        <div class="p-2 rounded-lg" :class="getCardColors(card.label).bg">
+                                            <svg class="w-5 h-5" :class="getCardColors(card.label).icon" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" :d="card.icon" />
+                                            </svg>
+                                        </div>
+                                    </div>
+                                    <div class="mt-2 flex items-center gap-2">
+                                        <span class="text-xs text-gray-400 dark:text-gray-500">Click to view</span>
+                                        <svg class="w-3 h-3 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7" />
+                                        </svg>
+                                    </div>
+                                </Link>
+                            </div>
+                        </div>
+                    </div>
                 </div>
             </div>
 
-            <!-- ── Recent Transactions ── -->
-            <div class="bg-white dark:bg-gray-900 rounded-xl border border-slate-100 dark:border-gray-800 shadow-sm p-5 transition-colors duration-300">
+            <!-- ─── Charts ────────────────────────────────────── -->
+            <div class="grid grid-cols-1 lg:grid-cols-2 gap-5">
+                <!-- Income vs Expenses -->
+                <div @click="navigateTo('income.index')" class="bg-white dark:bg-gray-900 rounded-xl shadow-sm border border-gray-100 dark:border-gray-800 p-5 transition hover:shadow-lg cursor-pointer">
+                    <p class="text-sm font-semibold text-slate-700 dark:text-slate-200 mb-3">Income vs Expenses</p>
+                    <div style="height: 240px;"><canvas id="incomeExpenseChart"></canvas></div>
+                    <p class="text-xs text-center text-slate-400 dark:text-slate-500 mt-2">Click to view Income</p>
+                </div>
+
+                <!-- Net Income -->
+                <div @click="navigateTo('income.index')" class="bg-white dark:bg-gray-900 rounded-xl shadow-sm border border-gray-100 dark:border-gray-800 p-5 transition hover:shadow-lg cursor-pointer">
+                    <p class="text-sm font-semibold text-slate-700 dark:text-slate-200 mb-3">Net Income by Month</p>
+                    <div style="height: 240px;"><canvas id="netIncomeChart"></canvas></div>
+                    <p class="text-xs text-center text-slate-400 dark:text-slate-500 mt-2">Click to view Income</p>
+                </div>
+
+                <!-- Expense Categories -->
+                <div @click="navigateTo('expenses.index')" class="bg-white dark:bg-gray-900 rounded-xl shadow-sm border border-gray-100 dark:border-gray-800 p-5 transition hover:shadow-lg cursor-pointer">
+                    <p class="text-sm font-semibold text-slate-700 dark:text-slate-200 mb-3">Expense Categories</p>
+                    <div style="height: 240px;"><canvas id="expenseCategoryChart"></canvas></div>
+                    <p v-if="!expense_categories.length" class="text-center text-gray-500 py-4">No expense category data.</p>
+                    <p class="text-xs text-center text-slate-400 dark:text-slate-500 mt-2">Click to view Expenses</p>
+                </div>
+
+                <!-- Accounting Categories -->
+                <div @click="navigateTo('expenses.index')" class="bg-white dark:bg-gray-900 rounded-xl shadow-sm border border-gray-100 dark:border-gray-800 p-5 transition hover:shadow-lg cursor-pointer">
+                    <p class="text-sm font-semibold text-slate-700 dark:text-slate-200 mb-3">Accounting Categories</p>
+                    <div style="height: 240px;"><canvas id="accountingChart"></canvas></div>
+                    <p v-if="!accounting_categories.length" class="text-center text-gray-500 py-4">No accounting category data.</p>
+                    <p class="text-xs text-center text-slate-400 dark:text-slate-500 mt-2">Click to view Expenses</p>
+                </div>
+            </div>
+
+            <!-- ─── Recent Transactions ────────────────────────── -->
+            <div class="bg-white dark:bg-gray-900 rounded-xl shadow-sm border border-gray-100 dark:border-gray-800 p-5">
                 <p class="text-sm font-semibold text-slate-700 dark:text-slate-200 mb-4">Recent Transactions</p>
                 <div class="overflow-x-auto">
                     <table class="min-w-full text-sm">
@@ -496,18 +515,14 @@ onMounted(() => initCharts());
                             </tr>
                         </thead>
                         <tbody class="divide-y divide-slate-50 dark:divide-gray-800">
-                            <tr v-for="tx in filteredTransactions" :key="tx.id"
-                                class="hover:bg-slate-50 dark:hover:bg-gray-800/60 transition-colors duration-150">
+                            <tr v-for="tx in filteredTransactions" :key="tx.id" class="hover:bg-slate-50 dark:hover:bg-gray-800/60 transition-colors duration-150">
                                 <td class="py-3 pr-4 text-slate-500 dark:text-slate-400 whitespace-nowrap">{{ tx.date || '—' }}</td>
                                 <td class="py-3 pr-4 text-slate-700 dark:text-slate-300 max-w-[200px] truncate">{{ tx.particulars || '—' }}</td>
                                 <td class="py-3 pr-4 text-slate-600 dark:text-slate-400">{{ tx.client_name || tx.supplier_name || '—' }}</td>
-                                <td class="py-3 pr-4 font-semibold whitespace-nowrap"
-                                    :class="tx.type === 'income' ? 'text-emerald-600 dark:text-emerald-400' : 'text-rose-500 dark:text-rose-400'">
+                                <td class="py-3 pr-4 font-semibold whitespace-nowrap" :class="tx.type === 'income' ? 'text-emerald-600 dark:text-emerald-400' : 'text-rose-500 dark:text-rose-400'">
                                     {{ tx.type === 'income' ? '+' : '−' }} ₱{{ (tx.amount || 0).toLocaleString() }}
                                 </td>
-                                <td class="py-3">
-                                    <AppStatus :type="tx.type === 'income' ? 'success' : 'danger'" :label="tx.type" />
-                                </td>
+                                <td class="py-3"><AppStatus :type="tx.type === 'income' ? 'success' : 'danger'" :label="tx.type" /></td>
                             </tr>
                             <tr v-if="filteredTransactions.length === 0">
                                 <td colspan="5" class="py-10 text-center text-slate-400 dark:text-slate-500 text-sm">No transactions found</td>

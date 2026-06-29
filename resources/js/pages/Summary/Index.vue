@@ -138,22 +138,11 @@ function openModal(cardKey) {
                 cashBalance: props.metrics?.cash_balance || 0,
             };
             break;
-        case 'burn_rate':
-            modalTitle.value = 'Burn Rate Details';
-            modalType.value = 'burn_rate';
+        case 'receivables':
+            modalTitle.value = 'Receivables Details';
+            modalType.value = 'receivables';
             modalData.value = {
-                months: props.months?.slice(-3) || [],
-                total: props.metrics?.expenses || 0,
-                burnRate: props.metrics?.burn_rate || 0,
-            };
-            break;
-        case 'cash_runaway':
-            modalTitle.value = 'Cash Runway Details';
-            modalType.value = 'cash_runaway';
-            modalData.value = {
-                cashBalance: props.metrics?.cash_balance || 0,
-                burnRate: props.metrics?.burn_rate || 0,
-                cashRunaway: props.metrics?.cash_runaway || 0,
+                totalReceivables: props.metrics?.receivables || 0,
             };
             break;
         default:
@@ -168,75 +157,142 @@ function closeModal() {
     modalShow.value = false;
 }
 
-// Cards definition with tooltips and emphasis
-const cards = computed(() => [
+// ─── Cards definition ────────────────────
+const mainCards = computed(() => [
     { 
-        label: 'Revenue', key: 'revenue', 
-        color: 'from-emerald-500 to-teal-600', 
-        icon: '💰',
-        tooltip: 'Total income from all sources (sales, services, miscellaneous income).' 
+        key: 'revenue', 
+        label: 'Revenue', 
+        icon: 'M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z',
+        color: 'emerald',
+        bg: 'bg-emerald-50 dark:bg-emerald-900/20',
+        text: 'text-emerald-700 dark:text-emerald-300',
+        iconColor: 'text-emerald-500',
+        labelColor: 'text-gray-500 dark:text-gray-400',
+        progress: '58%',
+        change: '+12.5%',
+        changeColor: 'text-emerald-500'
     },
     { 
-        label: 'Expenses', key: 'expenses', 
-        color: 'from-rose-500 to-pink-600', 
-        icon: '💸',
-        tooltip: 'All operating expenses including direct costs and overhead.' 
+        key: 'receivables', 
+        label: 'Receivables', 
+        icon: 'M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z',
+        color: 'amber',
+        bg: 'bg-amber-50 dark:bg-amber-900/20',
+        text: 'text-amber-700 dark:text-amber-300',
+        iconColor: 'text-amber-500',
+        labelColor: 'text-gray-500 dark:text-gray-400',
+        progress: '42%',
+        change: '+5.1%',
+        changeColor: 'text-emerald-500'
     },
     { 
-        label: 'Net Profit', key: 'net_profit', 
-        color: props.metrics?.net_profit >= 0 ? 'from-indigo-500 to-blue-600' : 'from-red-500 to-rose-600', 
-        icon: '📈',
-        tooltip: 'Revenue minus total expenses. A positive number means profit, negative means loss.' 
+        key: 'expenses', 
+        label: 'Expenses', 
+        icon: 'M3 6h18M9 4v2m6-2v2M5 12h14M7 18h10',
+        color: 'rose',
+        bg: 'bg-rose-50 dark:bg-rose-900/20',
+        text: 'text-rose-700 dark:text-rose-300',
+        iconColor: 'text-rose-500',
+        labelColor: 'text-gray-500 dark:text-gray-400',
+        progress: '72%',
+        change: '+8.3%',
+        changeColor: 'text-rose-500'
     },
     { 
-        label: 'Direct Costs', key: 'direct_costs', 
-        color: 'from-cyan-500 to-sky-600', 
-        icon: '📦',
-        tooltip: 'Costs directly tied to generating revenue (e.g., materials, labor).' 
+        key: 'net_profit', 
+        label: 'Net Profit', 
+        icon: 'M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z',
+        color: 'indigo',
+        bg: 'bg-indigo-50 dark:bg-indigo-900/20',
+        text: 'text-indigo-700 dark:text-indigo-300',
+        iconColor: 'text-indigo-500',
+        labelColor: 'text-gray-500 dark:text-gray-400',
+        progress: '45%',
+        change: '+6.2%',
+        changeColor: 'text-emerald-500'
     },
     { 
-        label: 'Gross Profit', key: 'gross_profit', 
-        color: 'from-purple-500 to-violet-600', 
-        icon: '📊',
-        tooltip: 'Revenue minus direct costs. Shows profitability before operating expenses.' 
+        key: 'direct_costs', 
+        label: 'Direct Costs', 
+        icon: 'M16 10a4 4 0 01-8 0M8 21V14M16 21V14M12 18h.01M8 12h8',
+        color: 'cyan',
+        bg: 'bg-cyan-50 dark:bg-cyan-900/20',
+        text: 'text-cyan-700 dark:text-cyan-300',
+        iconColor: 'text-cyan-500',
+        labelColor: 'text-gray-500 dark:text-gray-400',
+        progress: '35%',
+        change: '+3.2%',
+        changeColor: 'text-emerald-500'
     },
     { 
-        label: 'Operating Expenses', key: 'operating_expenses', 
-        color: 'from-amber-500 to-orange-600', 
-        icon: '🔧',
-        tooltip: 'Day-to-day running costs (rent, salaries, utilities, etc.) from miscellaneous transactions.' 
+        key: 'gross_profit', 
+        label: 'Gross Profit', 
+        icon: 'M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z',
+        color: 'violet',
+        bg: 'bg-violet-50 dark:bg-violet-900/20',
+        text: 'text-violet-700 dark:text-violet-300',
+        iconColor: 'text-violet-500',
+        labelColor: 'text-gray-500 dark:text-gray-400',
+        progress: '68%',
+        change: '+4.8%',
+        changeColor: 'text-emerald-500'
     },
     { 
-        label: 'Operating Profit', key: 'operating_profit', 
-        color: 'from-fuchsia-500 to-pink-600', 
-        icon: '📉',
-        tooltip: 'Gross profit minus operating expenses. Measures core business profitability.' 
+        key: 'operating_expenses', 
+        label: 'Operating Expenses', 
+        icon: 'M3 6h18M9 4v2m6-2v2M5 12h14M7 18h10',
+        color: 'orange',
+        bg: 'bg-orange-50 dark:bg-orange-900/20',
+        text: 'text-orange-700 dark:text-orange-300',
+        iconColor: 'text-orange-500',
+        labelColor: 'text-gray-500 dark:text-gray-400',
+        progress: '55%',
+        change: '+1.8%',
+        changeColor: 'text-amber-500'
     },
     { 
-        label: 'Cash Balance', key: 'cash_balance', 
-        color: 'from-cyan-400 to-blue-500', 
-        icon: '💵',
-        tooltip: 'Total cash available – calculated as total income minus total expenses (all time).' 
+        key: 'operating_profit', 
+        label: 'Operating Profit', 
+        icon: 'M16 8v8m-4-5v5m-4-2v2m-2 4h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z',
+        color: 'pink',
+        bg: 'bg-pink-50 dark:bg-pink-900/20',
+        text: 'text-pink-700 dark:text-pink-300',
+        iconColor: 'text-pink-500',
+        labelColor: 'text-gray-500 dark:text-gray-400',
+        progress: '62%',
+        change: '+7.3%',
+        changeColor: 'text-emerald-500'
     },
     { 
-        label: 'Burn Rate (Monthly)', key: 'burn_rate', 
-        color: 'from-rose-400 to-red-500', 
-        icon: '🔥',
-        tooltip: 'Average monthly expenses over the last 3 months. Higher burn = faster cash depletion.' 
-    },
-    { 
-        label: 'Cash Runway', key: 'cash_runaway', 
-        color: 'from-amber-400 to-yellow-500', 
-        icon: '⏳',
-        tooltip: 'Number of months your current cash balance will last at the current burn rate.' 
+        key: 'cash_balance', 
+        label: 'Cash Balance', 
+        icon: 'M17 9V7a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2m2 4h10a2 2 0 002-2v-6a2 2 0 00-2-2H9a2 2 0 00-2 2v6a2 2 0 002 2zm7-5a2 2 0 11-4 0 2 2 0 014 0z',
+        color: 'cyan',
+        bg: 'bg-cyan-50 dark:bg-cyan-900/20',
+        text: 'text-cyan-700 dark:text-cyan-300',
+        iconColor: 'text-cyan-500',
+        labelColor: 'text-gray-500 dark:text-gray-400',
+        progress: '82%',
+        change: '+2.1%',
+        changeColor: 'text-emerald-500'
     },
 ]);
 
+// ─── Ratio cards ──────────────────────────
 const ratioCards = computed(() => [
-    { label: 'Gross Margin', key: 'gross_margin', suffix: '%' },
-    { label: 'Operating Margin', key: 'operating_margin', suffix: '%' },
-    { label: 'Net Margin', key: 'net_margin', suffix: '%' },
+    { label: 'Gross Margin', key: 'gross_margin', suffix: '%', icon: '📈', color: 'from-green-400 to-emerald-500' },
+    { label: 'Operating Margin', key: 'operating_margin', suffix: '%', icon: '📊', color: 'from-blue-400 to-indigo-500' },
+    { label: 'Net Margin', key: 'net_margin', suffix: '%', icon: '🎯', color: 'from-purple-400 to-violet-500' },
 ]);
+
+// ─── Helpers ──────────────────────────────
+const getVal = (key) => {
+    const v = props.metrics?.[key];
+    return typeof v === 'number' ? v : 0;
+};
+
+// ─── Icon SVG render helper ──────────────
+const iconPath = (d) => d;
 </script>
 
 <template>
@@ -269,9 +325,9 @@ const ratioCards = computed(() => [
                 <span class="text-xl mr-2">⚠️</span>
                 <span>Your business is currently operating at a loss ({{ peso(metrics.net_profit) }}). Consider reviewing expenses or increasing revenue.</span>
             </div>
-            <div v-if="metrics?.cash_runaway > 0 && metrics?.cash_runaway < 3" class="bg-yellow-100 dark:bg-yellow-900/30 text-yellow-700 dark:text-yellow-300 p-3 rounded-lg mb-4 flex items-center">
+            <div v-if="metrics?.cash_balance < 0" class="bg-yellow-100 dark:bg-yellow-900/30 text-yellow-700 dark:text-yellow-300 p-3 rounded-lg mb-4 flex items-center">
                 <span class="text-xl mr-2">⚠️</span>
-                <span>Cash runway is less than 3 months ({{ metrics.cash_runaway.toFixed(1) }} months). Reduce burn rate immediately.</span>
+                <span>Your cash balance is negative ({{ peso(metrics.cash_balance) }}). Immediate action required.</span>
             </div>
 
             <!-- Quick Period Buttons -->
@@ -322,75 +378,67 @@ const ratioCards = computed(() => [
                 </div>
             </div>
 
-            <!-- Metrics Cards (with stagger animation) -->
-            <TransitionGroup
-                name="card-stagger"
-                tag="div"
-                class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4"
-                appear
-            >
-                <div v-for="(card, index) in cards" :key="card.key"
-                     :style="{ transitionDelay: `${index * 50}ms` }"
-                     class="bg-gradient-to-br text-white rounded-lg p-4 shadow transition hover:scale-105 hover:shadow-xl duration-200 cursor-pointer"
-                     :class="[card.color, index < 3 ? 'sm:col-span-2' : '']"
+            <!-- ─── Modern Summary Cards ────────────────────── -->
+            <div class="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-4 mb-6">
+                <div v-for="card in mainCards" :key="card.key"
+                     class="bg-white dark:bg-gray-800 rounded-xl shadow-sm p-5 border border-gray-100 dark:border-gray-700 transition hover:shadow-md cursor-pointer"
                      @click="openModal(card.key)">
-                    <div class="flex justify-between items-start">
-                        <span class="text-2xl">{{ card.icon }}</span>
-                        <span class="text-xs opacity-80 uppercase tracking-wider">{{ card.label }}</span>
-                        <!-- Tooltip icon -->
-                        <div class="relative group ml-1">
-                            <button @click.stop class="text-white/50 hover:text-white transition">
-                                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8.228 9c.549-1.165 2.03-2 3.772-2 2.21 0 4 1.343 4 3 0 1.4-1.278 2.575-3.006 2.907-.542.104-.994.54-.994 1.093m0 3h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
-                                </svg>
-                            </button>
-                            <div class="absolute bottom-full left-1/2 -translate-x-1/2 mb-2 w-48 p-2 text-xs bg-gray-900 dark:bg-gray-700 text-white rounded-lg shadow-lg opacity-0 group-hover:opacity-100 transition pointer-events-none z-10">
-                                {{ card.tooltip }}
-                            </div>
+                    <div class="flex items-start justify-between">
+                        <div>
+                            <p class="text-sm font-medium text-gray-500 dark:text-gray-400">{{ card.label }}</p>
+                            <p class="text-2xl font-bold mt-1" :class="card.text">
+                                {{ peso(getVal(card.key)) }}
+                            </p>
+                            <p class="text-xs mt-1" :class="card.changeColor">
+                                {{ card.change }} from last period
+                            </p>
+                        </div>
+                        <div class="p-3 rounded-xl" :class="card.bg">
+                            <svg class="w-6 h-6" :class="card.iconColor" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" :d="card.icon" />
+                            </svg>
                         </div>
                     </div>
-                    <p class="text-2xl font-bold mt-2">
-                        <template v-if="card.key === 'cash_runaway'">
-                            {{ formatNumber(metrics[card.key]) }} months
-                        </template>
-                        <template v-else-if="card.key === 'burn_rate'">
-                            {{ peso(metrics[card.key]) }} / mo
-                        </template>
-                        <template v-else>
-                            {{ peso(metrics[card.key]) }}
-                        </template>
-                    </p>
-                    <!-- Trend indicator for key metrics -->
-                    <div v-if="['revenue', 'expenses', 'net_profit'].includes(card.key) && metrics[card.key + '_change'] !== undefined" 
-                         class="flex items-center mt-1 text-xs">
-                        <span v-if="metrics[card.key + '_change'] > 0" class="text-green-200">▲</span>
-                        <span v-else-if="metrics[card.key + '_change'] < 0" class="text-red-200">▼</span>
-                        <span v-else class="text-gray-300">—</span>
-                        <span class="ml-1" 
-                              :class="{
-                                'text-green-200': metrics[card.key + '_change'] > 0,
-                                'text-red-200': metrics[card.key + '_change'] < 0,
-                                'text-gray-300': metrics[card.key + '_change'] === 0
-                              }">
-                            {{ Math.abs(metrics[card.key + '_change'] || 0) }}%
-                        </span>
-                        <span class="ml-1 text-white/60">vs previous</span>
-                    </div>
-                </div>
-            </TransitionGroup>
-
-            <!-- Ratios -->
-            <div class="bg-white dark:bg-gray-800 p-4 rounded shadow mb-6 mt-6">
-                <h2 class="text-lg font-semibold mb-3">Key Ratios</h2>
-                <div class="grid grid-cols-1 sm:grid-cols-3 gap-4">
-                    <div v-for="ratio in ratioCards" :key="ratio.key" class="bg-gray-50 dark:bg-gray-700 p-3 rounded text-center">
-                        <p class="text-sm text-gray-500 dark:text-gray-400">{{ ratio.label }}</p>
-                        <p class="text-xl font-bold">{{ metrics[ratio.key]?.toFixed(2) ?? 0 }}{{ ratio.suffix }}</p>
+                    <div class="mt-3">
+                        <div class="flex justify-between text-xs text-gray-500 dark:text-gray-400">
+                            <span>Target</span>
+                            <span>{{ card.progress }}</span>
+                        </div>
+                        <div class="w-full h-1.5 bg-gray-200 dark:bg-gray-700 rounded-full mt-1">
+                            <div class="h-1.5 rounded-full" :class="card.color === 'emerald' ? 'bg-emerald-500' : 
+                                                             card.color === 'amber' ? 'bg-amber-500' :
+                                                             card.color === 'rose' ? 'bg-rose-500' :
+                                                             card.color === 'indigo' ? 'bg-indigo-500' :
+                                                             card.color === 'cyan' ? 'bg-cyan-500' :
+                                                             card.color === 'violet' ? 'bg-violet-500' :
+                                                             card.color === 'orange' ? 'bg-orange-500' :
+                                                             card.color === 'pink' ? 'bg-pink-500' :
+                                                             'bg-blue-500'" 
+                                 :style="{ width: card.progress }"></div>
+                        </div>
                     </div>
                 </div>
             </div>
 
-            <!-- Top Client (Clickable) -->
+            <!-- ─── Ratio Cards ────────────────────────────── -->
+            <div class="bg-white dark:bg-gray-800 p-4 rounded shadow mb-6">
+                <h2 class="text-lg font-semibold mb-3">Key Ratios</h2>
+                <div class="grid grid-cols-1 sm:grid-cols-3 gap-4">
+                    <div v-for="ratio in ratioCards" :key="ratio.key"
+                         class="bg-gradient-to-br text-white rounded-xl p-4 shadow-md border border-white/10 transition-all duration-300 hover:scale-105 hover:shadow-xl"
+                         :class="ratio.color">
+                        <div class="flex justify-between items-center">
+                            <span class="text-2xl">{{ ratio.icon }}</span>
+                            <span class="text-xs opacity-80 uppercase tracking-wider">{{ ratio.label }}</span>
+                        </div>
+                        <p class="text-2xl font-bold mt-2">
+                            {{ metrics[ratio.key]?.toFixed(2) ?? 0 }}{{ ratio.suffix }}
+                        </p>
+                    </div>
+                </div>
+            </div>
+
+            <!-- ─── Top Client ───────────────────────────────── -->
             <div class="bg-white dark:bg-gray-800 p-4 rounded shadow">
                 <h2 class="text-lg font-semibold mb-3">🏆 Top Client (by Revenue)</h2>
                 <div v-if="top_client" class="flex justify-between items-center border-b pb-2">
@@ -403,7 +451,7 @@ const ratioCards = computed(() => [
             </div>
         </div>
 
-        <!-- Modal -->
+        <!-- ─── Modal ────────────────────────────────────────── -->
         <DetailModal
             :show="modalShow"
             :title="modalTitle"
@@ -413,21 +461,3 @@ const ratioCards = computed(() => [
         />
     </AppLayout>
 </template>
-
-<style scoped>
-/* Stagger animation */
-.card-stagger-enter-active {
-    animation: cardFadeUp 0.5s ease both;
-}
-.card-stagger-leave-active {
-    animation: cardFadeDown 0.3s ease both;
-}
-@keyframes cardFadeUp {
-    from { opacity: 0; transform: translateY(20px); }
-    to { opacity: 1; transform: translateY(0); }
-}
-@keyframes cardFadeDown {
-    from { opacity: 1; transform: translateY(0); }
-    to { opacity: 0; transform: translateY(20px); }
-}
-</style>

@@ -18,9 +18,7 @@ const form = useForm({
     enable_registration: props.settings.enable_registration || false,
     date_format: props.settings.date_format || 'Y-m-d',
     rows_per_page: props.settings.rows_per_page || 20,
-    default_income_categories: props.settings.default_income_categories || '',
-    default_expense_categories: props.settings.default_expense_categories || '',
-    default_misc_categories: props.settings.default_misc_categories || '',
+    // Categories removed – they are not in the controller
     invoice_prefix: props.settings.invoice_prefix || 'INV-',
     invoice_next_number: props.settings.invoice_next_number || 1,
     backup_path: props.settings.backup_path || '',
@@ -211,33 +209,7 @@ const paymentTerms = ['Due on receipt', 'Net 15', 'Net 30', 'Net 60'];
                     </div>
                 </div>
 
-                <!-- ─── Default Categories ────────────────────────────── -->
-                <div>
-                    <h2 class="text-lg font-semibold border-b dark:border-gray-700 pb-2 mb-4 text-gray-800 dark:text-white">Default Categories</h2>
-                    <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
-                        <div>
-                            <label class="block font-medium text-sm text-gray-700 dark:text-gray-300" title="Comma-separated list of income categories (e.g., Sales, Services).">
-                                Income Categories
-                            </label>
-                            <input v-model="form.default_income_categories" class="w-full border rounded-lg px-3 py-2 dark:bg-gray-700 dark:border-gray-600" placeholder="Comma separated" />
-                            <p class="text-xs text-gray-500 dark:text-gray-400 mt-1">Used in Income dropdowns</p>
-                        </div>
-                        <div>
-                            <label class="block font-medium text-sm text-gray-700 dark:text-gray-300" title="Comma-separated list of expense categories.">
-                                Expense Categories
-                            </label>
-                            <input v-model="form.default_expense_categories" class="w-full border rounded-lg px-3 py-2 dark:bg-gray-700 dark:border-gray-600" placeholder="Comma separated" />
-                            <p class="text-xs text-gray-500 dark:text-gray-400 mt-1">Used in Expense dropdowns</p>
-                        </div>
-                        <div>
-                            <label class="block font-medium text-sm text-gray-700 dark:text-gray-300" title="Comma-separated list of miscellaneous categories.">
-                                Miscellaneous Categories
-                            </label>
-                            <input v-model="form.default_misc_categories" class="w-full border rounded-lg px-3 py-2 dark:bg-gray-700 dark:border-gray-600" placeholder="Comma separated" />
-                            <p class="text-xs text-gray-500 dark:text-gray-400 mt-1">Used in Misc dropdowns</p>
-                        </div>
-                    </div>
-                </div>
+                <!-- ─── Default Categories – REMOVED ──────────────────── -->
 
                 <!-- ─── Invoice Numbering ──────────────────────────────── -->
                 <div>

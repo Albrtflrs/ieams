@@ -10,12 +10,30 @@ use Illuminate\Support\Facades\DB;
 
 class SupplierController extends Controller
 {
-    public function index()
+    public function index(Request $request) // 👈 added Request
     {
         $this->authorize('viewAny', Supplier::class);
 
+        $search = $request->input('search');
+
         $perPage = Setting::get('rows_per_page', 20);
-        $suppliers = Supplier::latest()->paginate($perPage)
+
+        $query = Supplier::query();
+
+        // Apply search filter
+        if ($search) {
+            $query->where(function ($q) use ($search) {
+                $q->where('name', 'like', "%{$search}%")
+                  ->orWhere('contact_person', 'like', "%{$search}%")
+                  ->orWhere('email', 'like', "%{$search}%")
+                  ->orWhere('phone', 'like', "%{$search}%")
+                  ->orWhere('address', 'like', "%{$search}%");
+            });
+        }
+
+        $suppliers = $query->latest()
+            ->paginate($perPage)
+            ->withQueryString() // 👈 keeps search in pagination links
             ->through(fn($supplier) => [
                 'id' => $supplier->id,
                 'name' => $supplier->name,
@@ -26,6 +44,7 @@ class SupplierController extends Controller
                 'created_at' => $supplier->created_at->format('Y-m-d'),
             ]);
 
+        // ─── Summary calculations (unchanged) ───
         $totalSuppliers = Supplier::count();
         $topSupplierAmount = Supplier::withSum('expenseTransactions', 'amount')
             ->orderBy('expense_transactions_sum_amount', 'desc')->first();
@@ -40,9 +59,14 @@ class SupplierController extends Controller
             'top_supplier_count' => $topSupplierCount ? ['name' => $topSupplierCount->name, 'count' => $topSupplierCount->expense_transactions_count ?? 0] : null,
         ];
 
-        return Inertia::render('Suppliers/Index', ['suppliers' => $suppliers, 'summary' => $summary]);
+        return Inertia::render('Suppliers/Index', [
+            'suppliers' => $suppliers,
+            'summary' => $summary,
+            'filters' => ['search' => $search], // 👈 pass current search to Vue
+        ]);
     }
 
+    // ─── Other methods (create, store, edit, update, destroy) remain unchanged ───
     public function create()
     {
         $this->authorize('create', Supplier::class);
@@ -88,5 +112,12 @@ class SupplierController extends Controller
         $this->authorize('delete', $supplier);
         $supplier->delete();
         return redirect()->route('suppliers.index')->with('success', 'Supplier deleted.');
+    }
+
+    // Optional: add show method if needed (the View link exists)
+    public function show(Supplier $supplier)
+    {
+        $this->authorize('view', $supplier);
+        return Inertia::render('Suppliers/Show', ['supplier' => $supplier]);
     }
 }

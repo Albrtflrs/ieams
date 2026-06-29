@@ -1,21 +1,84 @@
 <script setup>
 import AppLayout from '@/Layouts/AppLayout.vue';
 import { Link, router } from '@inertiajs/vue3';
-import { ref, computed } from 'vue';
+import { ref, computed, watch } from 'vue';
 import { useSettings } from '@/composables/useSettings';
 import { useForm } from '@inertiajs/vue3';
+import AppStatus from '@/Components/AppStatus.vue';
 
 const props = defineProps({
     quotations: Object,
-    items: Object, // 👈 ADDED
-    user_role: String, // 👈 ADDED
+    items: Object,
+    user_role: String,
+    categories: Array,
+    clients: Array,
+    statuses: Array,
+    filters: Object,
 });
 
 const { currency } = useSettings();
 
 const peso = (val) => `${currency.value}${Number(val ?? 0).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
 
-// ─── Quotation Actions ──────────────────────
+// ─── Filter state ──────────────────────────
+const filters = ref({
+    client_id: props.filters?.client_id || '',
+    date_filter: props.filters?.date_filter || '',
+    start_date: props.filters?.start_date || '',
+    end_date: props.filters?.end_date || '',
+    status: props.filters?.status || '',
+});
+
+const showCustomDate = computed(() => filters.value.date_filter === 'custom');
+
+// ─── Debounce helper ──────────────────────────
+function debounce(fn, delay) {
+    let timeoutId = null;
+    return function (...args) {
+        clearTimeout(timeoutId);
+        timeoutId = setTimeout(() => fn(...args), delay);
+    };
+}
+
+// ─── Apply filters (called by watchers) ────────
+const applyFilters = () => {
+    const params = new URLSearchParams();
+
+    if (filters.value.client_id) params.append('client_id', filters.value.client_id);
+    if (filters.value.status) params.append('status', filters.value.status);
+    if (filters.value.date_filter) params.append('date_filter', filters.value.date_filter);
+    if (filters.value.start_date) params.append('start_date', filters.value.start_date);
+    if (filters.value.end_date) params.append('end_date', filters.value.end_date);
+
+    const queryString = params.toString();
+    router.get(route('quotations.index') + (queryString ? '?' + queryString : ''), {}, {
+        preserveState: true,
+        preserveScroll: true,
+        replace: true,
+    });
+};
+
+const debouncedApply = debounce(applyFilters, 300);
+
+watch(() => filters.value.client_id, debouncedApply);
+watch(() => filters.value.status, debouncedApply);
+watch(() => filters.value.date_filter, () => {
+    if (filters.value.date_filter !== 'custom') {
+        filters.value.start_date = '';
+        filters.value.end_date = '';
+    }
+    debouncedApply();
+});
+watch(() => filters.value.start_date, debouncedApply);
+watch(() => filters.value.end_date, debouncedApply);
+
+// ─── Reset filters ────────────────────────────────
+const resetFilters = () => {
+    filters.value = { client_id: '', date_filter: '', start_date: '', end_date: '', status: '' };
+    window.location.href = route('quotations.index');
+};
+
+// ─── Quotation Actions ──────────────────────────
 const deleteQuotation = (id) => {
     if (confirm('Delete this quotation?')) {
         router.delete(route('quotations.destroy', id));
@@ -28,7 +91,19 @@ const convertToIncome = (id) => {
     }
 };
 
-// ─── Item Management ──────────────────────
+// ─── Status Mapping for AppStatus ──────────────
+const statusMap = {
+    draft: 'info',
+    sent: 'info',
+    accepted: 'success',
+    rejected: 'danger',
+    expired: 'warning',
+    converted: 'success',
+};
+
+const getStatusType = (status) => statusMap[status] || 'info';
+
+// ─── Item Management ────────────────────────────
 const canManageItems = computed(() => ['super_admin', 'admin'].includes(props.user_role));
 
 const showItemModal = ref(false);
@@ -41,7 +116,24 @@ const itemForm = useForm({
     category: '',
 });
 
+const calculateSellingPrice = () => {
+    const cost = parseFloat(itemForm.default_cost_price) || 0;
+    const markup = parseFloat(itemForm.default_markup_percentage) || 0;
+    if (cost > 0 && markup >= 0) {
+        itemForm.default_selling_price = cost * (1 + markup / 100);
+    } else {
+        itemForm.default_selling_price = 0;
+    }
+};
+
+watch(
+    () => [itemForm.default_cost_price, itemForm.default_markup_percentage],
+    () => calculateSellingPrice(),
+    { immediate: true, deep: true }
+);
+
 const addItem = () => {
+    calculateSellingPrice();
     itemForm.post(route('items.store'), {
         preserveScroll: true,
         preserveState: true,
@@ -59,19 +151,6 @@ const deleteItem = (id) => {
             preserveState: true,
         });
     }
-};
-
-// ─── Status Badge ──────────────────────────
-const statusBadgeClass = (status) => {
-    const map = {
-        draft: 'bg-gray-100 text-gray-800 dark:bg-gray-700 dark:text-gray-300',
-        sent: 'bg-blue-100 text-blue-800 dark:bg-blue-900/30 dark:text-blue-400',
-        accepted: 'bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-400',
-        rejected: 'bg-red-100 text-red-800 dark:bg-red-900/30 dark:text-red-400',
-        expired: 'bg-yellow-100 text-yellow-800 dark:bg-yellow-900/30 dark:text-yellow-400',
-        converted: 'bg-purple-100 text-purple-800 dark:bg-purple-900/30 dark:text-purple-400',
-    };
-    return map[status] || 'bg-gray-100 text-gray-800';
 };
 </script>
 
@@ -100,19 +179,85 @@ const statusBadgeClass = (status) => {
                         🛒 Manage Items
                     </button>
                     <Link
-                        v-if="canManageItems"
                         :href="route('quotations.create')"
                         class="bg-blue-500 hover:bg-blue-600 text-white px-4 py-2 rounded transition"
                     >
                         + New Quotation
                     </Link>
-                    <Link
-                        v-else
-                        :href="route('quotations.create')"
-                        class="bg-blue-500 hover:bg-blue-600 text-white px-4 py-2 rounded transition"
+                </div>
+            </div>
+
+            <!-- ─── Filters ──────────────────────────────── -->
+            <div class="bg-white dark:bg-gray-800 p-4 rounded-lg shadow mb-4 flex flex-wrap items-end gap-4">
+                <!-- Client Filter -->
+                <div>
+                    <label class="block text-xs font-medium text-gray-700 dark:text-gray-300">Client</label>
+                    <select
+                        v-model="filters.client_id"
+                        class="w-48 border rounded px-3 py-1.5 dark:bg-gray-700 dark:border-gray-600 text-sm"
                     >
-                        + New Quotation
-                    </Link>
+                        <option value="">All Clients</option>
+                        <option v-for="c in clients" :key="c.id" :value="c.id">{{ c.name }}</option>
+                    </select>
+                </div>
+
+                <!-- Status Filter -->
+                <div>
+                    <label class="block text-xs font-medium text-gray-700 dark:text-gray-300">Status</label>
+                    <select
+                        v-model="filters.status"
+                        class="w-36 border rounded px-3 py-1.5 dark:bg-gray-700 dark:border-gray-600 text-sm"
+                    >
+                        <option value="">All Statuses</option>
+                        <option v-for="s in statuses" :key="s" :value="s">{{ s }}</option>
+                    </select>
+                </div>
+
+                <!-- Date Filter -->
+                <div>
+                    <label class="block text-xs font-medium text-gray-700 dark:text-gray-300">Date</label>
+                    <select
+                        v-model="filters.date_filter"
+                        class="w-36 border rounded px-3 py-1.5 dark:bg-gray-700 dark:border-gray-600 text-sm"
+                    >
+                        <option value="">All</option>
+                        <option value="today">Today</option>
+                        <option value="this_week">This Week</option>
+                        <option value="this_month">This Month</option>
+                        <option value="this_year">This Year</option>
+                        <option value="custom">Custom Range</option>
+                    </select>
+                </div>
+
+                <!-- Custom Date Range -->
+                <div v-if="showCustomDate" class="flex items-center gap-2">
+                    <div>
+                        <label class="block text-xs font-medium text-gray-700 dark:text-gray-300">From</label>
+                        <input
+                            type="date"
+                            v-model="filters.start_date"
+                            class="w-36 border rounded px-3 py-1.5 dark:bg-gray-700 dark:border-gray-600 text-sm"
+                        />
+                    </div>
+                    <div>
+                        <label class="block text-xs font-medium text-gray-700 dark:text-gray-300">To</label>
+                        <input
+                            type="date"
+                            v-model="filters.end_date"
+                            class="w-36 border rounded px-3 py-1.5 dark:bg-gray-700 dark:border-gray-600 text-sm"
+                        />
+                    </div>
+                </div>
+
+                <!-- Reset Button -->
+                <div class="flex gap-2">
+                    <button
+                        @click="resetFilters"
+                        class="bg-gray-300 hover:bg-gray-400 dark:bg-gray-700 dark:hover:bg-gray-600 text-gray-800 dark:text-white px-4 py-1.5 rounded transition text-sm"
+                    >
+                        Reset Filters
+                    </button>
+                    <span class="text-xs text-gray-500 ml-2 self-center">{{ quotations.total }} records</span>
                 </div>
             </div>
 
@@ -136,19 +281,33 @@ const statusBadgeClass = (status) => {
                             <td class="px-4 py-2">{{ q.date_issued }}</td>
                             <td class="px-4 py-2 font-semibold">{{ peso(q.total_amount) }}</td>
                             <td class="px-4 py-2">
-                                <span class="px-2 py-1 rounded-full text-xs font-medium capitalize" :class="statusBadgeClass(q.status)">
-                                    {{ q.status }}
-                                </span>
+                                <AppStatus :type="getStatusType(q.status)" :label="q.status" size="sm" />
                             </td>
-                            <td class="px-4 py-2">
-                                <Link :href="route('quotations.edit', q.id)" class="text-blue-600 dark:text-blue-400 hover:underline mr-2">Edit</Link>
-                                <button @click="deleteQuotation(q.id)" class="text-red-600 dark:text-red-400 hover:underline mr-2">Delete</button>
+                            <td class="px-4 py-2 whitespace-nowrap">
+                                <Link
+                                    :href="route('quotations.show', q.id)"
+                                    class="text-green-600 dark:text-green-400 hover:underline mr-2"
+                                >
+                                    View
+                                </Link>
+                                <Link
+                                    :href="route('quotations.edit', q.id)"
+                                    class="text-blue-600 dark:text-blue-400 hover:underline mr-2"
+                                >
+                                    Edit
+                                </Link>
+                                <button
+                                    @click="deleteQuotation(q.id)"
+                                    class="text-red-600 dark:text-red-400 hover:underline mr-2"
+                                >
+                                    Delete
+                                </button>
                                 <button
                                     v-if="q.status === 'accepted' && !q.converted_to_income_id"
                                     @click="convertToIncome(q.id)"
                                     class="text-green-600 dark:text-green-400 hover:underline"
                                 >
-                                    Convert to Income
+                                    Convert
                                 </button>
                             </td>
                         </tr>
@@ -188,10 +347,16 @@ const statusBadgeClass = (status) => {
                                 <td class="px-3 py-1.5">{{ item.default_markup_percentage }}%</td>
                                 <td class="px-3 py-1.5">{{ peso(item.default_selling_price) }}</td>
                                 <td class="px-3 py-1.5">
+                                    <Link
+                                        :href="route('items.edit', item.id)"
+                                        class="text-blue-600 dark:text-blue-400 hover:underline mr-2"
+                                    >
+                                        Edit
+                                    </Link>
                                     <button
                                         v-if="canManageItems"
                                         @click="deleteItem(item.id)"
-                                        class="text-red-600 dark:text-red-400 hover:underline text-xs"
+                                        class="text-red-600 dark:text-red-400 hover:underline"
                                     >
                                         Delete
                                     </button>
@@ -253,7 +418,9 @@ const statusBadgeClass = (status) => {
                             <input
                                 type="number"
                                 step="0.01"
-                                v-model="itemForm.default_cost_price"
+                                min="0"
+                                v-model.number="itemForm.default_cost_price"
+                                @input="calculateSellingPrice"
                                 class="w-full border rounded-lg px-3 py-2 dark:bg-gray-700 dark:border-gray-600"
                             />
                         </div>
@@ -262,18 +429,38 @@ const statusBadgeClass = (status) => {
                             <input
                                 type="number"
                                 step="0.1"
-                                v-model="itemForm.default_markup_percentage"
+                                min="0"
+                                v-model.number="itemForm.default_markup_percentage"
+                                @input="calculateSellingPrice"
                                 class="w-full border rounded-lg px-3 py-2 dark:bg-gray-700 dark:border-gray-600"
                             />
                         </div>
                     </div>
+
+                    <!-- Selling Price (auto-calculated, read-only) -->
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700 dark:text-gray-300">Selling Price</label>
+                        <input
+                            type="number"
+                            step="0.01"
+                            v-model="itemForm.default_selling_price"
+                            readonly
+                            class="w-full border rounded-lg px-3 py-2 dark:bg-gray-700 dark:border-gray-600 bg-gray-100 dark:bg-gray-600 cursor-not-allowed"
+                        />
+                    </div>
+
+                    <!-- Category Dropdown -->
                     <div>
                         <label class="block text-sm font-medium text-gray-700 dark:text-gray-300">Category</label>
-                        <input
+                        <select
                             v-model="itemForm.category"
                             class="w-full border rounded-lg px-3 py-2 dark:bg-gray-700 dark:border-gray-600"
-                            placeholder="e.g., Office Supplies, IT Equipment"
-                        />
+                        >
+                            <option value="">Select Category</option>
+                            <option v-for="cat in props.categories" :key="cat" :value="cat">
+                                {{ cat }}
+                            </option>
+                        </select>
                     </div>
 
                     <div class="flex gap-2 pt-4 border-t dark:border-gray-700">

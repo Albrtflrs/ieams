@@ -10,19 +10,30 @@ class ExpenseTransactionFactory extends Factory
 {
     protected $model = ExpenseTransaction::class;
 
-    public function definition()
+    // New categories list
+    private const CATEGORIES = [
+        'DELIVERY',
+        'DAILY EXPENSES',
+        'GAS/MAINTENANCE',
+        'SALARY',
+        'CASH RECEIVED',
+        'LOAN PAYMENT',
+        'MONTHLY FIX BILLS'
+    ];
+
+    public function definition(): array
     {
-        $supplier = Supplier::inRandomOrder()->first() ?? Supplier::factory()->create();
         return [
-            'supplier_id' => $supplier->id,
-            'date' => $this->faker->dateTimeBetween('-1 year', 'now'),
-            'amount' => $this->faker->randomFloat(2, 100, 20000),
-            'category' => $this->faker->randomElement(['Office Supplies', 'Utilities', 'Rent', 'Transportation', 'Maintenance', 'Others']),
-            'description' => $this->faker->sentence(5),
-            'receipt_number' => $this->faker->optional(0.7)->bothify('EXP-#####'),
-            'payment_method' => $this->faker->randomElement(['Cash', 'Bank Transfer', 'Check']),
-            'is_miscellaneous' => false,
-            'created_by' => 2,
+            'supplier_id' => Supplier::inRandomOrder()->first()?->id ?? Supplier::factory(),
+            'date' => $this->faker->dateTimeBetween('-6 months', 'now'),
+            'amount' => $this->faker->randomFloat(2, 100, 50000),
+            'category' => $this->faker->randomElement(self::CATEGORIES),
+            'description' => $this->faker->sentence(),
+            'receipt_number' => $this->faker->optional()->bothify('RCPT-####'),
+            'payment_method' => $this->faker->randomElement(['Cash', 'Bank Transfer', 'Check', 'Credit Card', 'GCash']),
+            'is_miscellaneous' => $this->faker->boolean(10),
+            'status' => $this->faker->randomElement(['Paid', 'Unpaid', 'Pending']),
+            'created_by' => 1,
             'created_at' => now(),
             'updated_at' => now(),
         ];

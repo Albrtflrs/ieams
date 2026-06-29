@@ -16,6 +16,7 @@ use App\Http\Controllers\ReportController;
 use App\Http\Controllers\SummaryController;
 use App\Http\Controllers\ReceivablesPayablesController;
 use App\Http\Controllers\QuotationController;
+use App\Http\Controllers\ItemController;
 
 use Inertia\Inertia;
 
@@ -39,10 +40,18 @@ Route::middleware('guest')->group(function () {
 Route::middleware(['auth'])->group(function () {
     Route::get('/dashboard', [DashboardController::class, 'index'])->name('dashboard');
     Route::resource('clients', ClientController::class);
+    
+    // ─── Income ────────────────────────────────────────────
     Route::resource('income', IncomeTransactionController::class);
+    Route::post('/income/{income}/mark-paid', [IncomeTransactionController::class, 'markPaid'])->name('income.mark-paid'); // 👈 new
+    
     Route::resource('suppliers', SupplierController::class);
     Route::resource('expenses', ExpenseTransactionController::class);
     Route::resource('misc', MiscellaneousController::class);
+    
+    // 👇 Misc Export Route
+    Route::get('/misc/export/csv', [MiscellaneousController::class, 'exportCsv'])->name('misc.export.csv');
+    
     Route::resource('users', UserController::class);
     Route::resource('retainers', RetainerController::class);
     Route::get('/summary', [SummaryController::class, 'index'])->name('summary.index');
@@ -59,6 +68,9 @@ Route::middleware(['auth'])->group(function () {
     Route::get('/reports/payables-aging/export/csv', [ReportController::class, 'exportPayablesCsv'])->name('reports.payables-aging.export.csv');
     Route::get('/reports/payables-aging/export/pdf', [ReportController::class, 'exportPayablesPdf'])->name('reports.payables-aging.export.pdf');
 
+    // ─── Items (now with edit and update) ───
+    Route::resource('items', ItemController::class)->only(['store', 'destroy', 'edit', 'update']);
+
     // Settings
     Route::get('/settings', [SettingsController::class, 'index'])->name('settings');
     Route::put('/settings', [SettingsController::class, 'update'])->name('settings.update');
@@ -66,9 +78,13 @@ Route::middleware(['auth'])->group(function () {
     Route::delete('/settings/logo', [SettingsController::class, 'removeLogo'])->name('settings.logo.remove');
     Route::get('/settings/backup', [SettingsController::class, 'downloadBackup'])->name('settings.backup.download');
 
-    // ─── Quotations (Full CRUD + Convert) ───
+    // ─── Quotations (Full CRUD + Convert + Export) ───
     Route::resource('quotations', QuotationController::class);
     Route::post('/quotations/{quotation}/convert-to-income', [QuotationController::class, 'convertToIncome'])->name('quotations.convert-to-income');
+    
+    // Export routes for quotations
+    Route::get('/quotations/{quotation}/export/pdf', [QuotationController::class, 'exportPdf'])->name('quotations.export.pdf');
+    Route::get('/quotations/{quotation}/export/csv', [QuotationController::class, 'exportCsv'])->name('quotations.export.csv');
 });
 
 require __DIR__.'/auth.php';
