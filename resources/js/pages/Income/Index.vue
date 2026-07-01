@@ -1,7 +1,7 @@
 <script setup>
 import AppLayout from '@/Layouts/AppLayout.vue';
 import DataTable from '@/Components/DataTable.vue';
-import { Link, router } from '@inertiajs/vue3';
+import { Link, router, usePage } from '@inertiajs/vue3';
 import { computed, ref, watch } from 'vue';
 import { useSettings } from '@/composables/useSettings';
 
@@ -9,16 +9,18 @@ const props = defineProps({
     transactions: { type: Object, required: true },
     summary: { type: Object, default: () => ({}) },
     filters: { type: Object, default: () => ({}) },
-    categories: { type: Array, default: () => [] }, // 👈 dynamic from controller
+    categories: { type: Array, default: () => [] },
 });
 
 const { currency } = useSettings();
 
+const page = usePage();
+const user = computed(() => page.props.auth?.user);
+const canViewTrash = computed(() => user.value && ['super_admin', 'admin'].includes(user.value.role));
+
 const peso = (val) => `${currency.value}${Number(val ?? 0).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
 
-// Use categories from props, fallback to empty array
 const CATEGORIES = props.categories.length ? props.categories : [];
-
 const STATUSES = ['Paid', 'Unpaid', 'Cash On Hold', 'Paid Royalty'];
 
 // ── Filters ──
@@ -28,7 +30,6 @@ const searchQuery = ref(props.filters.search ?? '');
 const dateFrom = ref(props.filters.date_from ?? '');
 const dateTo = ref(props.filters.date_to ?? '');
 
-// ── Period preset ──
 const selectedPeriod = ref(
     dateFrom.value || dateTo.value ? 'custom' : 'all'
 );
@@ -56,7 +57,6 @@ function applyPeriodPreset(period) {
 
 watch(selectedPeriod, applyPeriodPreset);
 
-// ── Custom debounce ──
 function debounce(fn, delay) {
     let timeoutId = null;
     return function (...args) {
@@ -65,7 +65,6 @@ function debounce(fn, delay) {
     };
 }
 
-// ── Debounced filter application ──
 const applyFilters = debounce(() => {
     const params = {
         category: selectedCategory.value || undefined,
@@ -83,7 +82,6 @@ const applyFilters = debounce(() => {
 
 watch([selectedCategory, selectedStatus, searchQuery, dateFrom, dateTo], applyFilters);
 
-// ── Reset Filters – HARD RESET ──
 const resetFilters = () => {
     selectedCategory.value = '';
     selectedStatus.value = '';
@@ -94,7 +92,6 @@ const resetFilters = () => {
     window.location.href = route('income.index');
 };
 
-// ── Columns ──
 const columns = [
     { key: 'item_no', label: 'Item No.' },
     { key: 'client_name', label: 'Client / Agency' },
@@ -115,7 +112,6 @@ const columns = [
     { key: 'withdrawn', label: 'Withdrawn' },
 ];
 
-// ── Helpers ──
 const deleteIncome = (id) => {
     if (confirm('Delete this income record?')) {
         router.delete(route('income.destroy', id));
@@ -134,7 +130,6 @@ const statusBadgeClass = (status) => {
     return map[status] || 'bg-gray-100 text-gray-800 dark:bg-gray-700 dark:text-gray-300';
 };
 
-// ── Global status counts (from summary) ──
 const statusCounts = computed(() => props.summary.status_counts ?? {
     Paid: 0,
     Unpaid: 0,
@@ -161,9 +156,22 @@ const clearSearch = () => {
             <!-- Header -->
             <div class="flex flex-wrap justify-between items-center gap-2">
                 <h1 class="text-2xl font-bold">Income Transactions</h1>
-                <Link :href="route('income.create')" class="bg-emerald-500 hover:bg-emerald-600 text-white px-4 py-2 rounded transition">
-                    + Add Income
-                </Link>
+                <div class="flex items-center gap-3">
+                    <!-- 👇 Trash button (admin only) – now using direct URL -->
+                    <Link
+                        v-if="canViewTrash"
+                        href="/income/trash-bin"
+                        class="inline-flex items-center gap-1.5 px-3 py-2 text-sm bg-red-50 dark:bg-red-900/20 text-red-700 dark:text-red-400 rounded-lg hover:bg-red-100 dark:hover:bg-red-800/30 transition"
+                    >
+                        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                        </svg>
+                        Trash
+                    </Link>
+                    <Link :href="route('income.create')" class="bg-emerald-500 hover:bg-emerald-600 text-white px-4 py-2 rounded transition">
+                        + Add Income
+                    </Link>
+                </div>
             </div>
 
             <!-- Summary cards -->
@@ -229,7 +237,7 @@ const clearSearch = () => {
                 </div>
             </div>
 
-            <!-- Status badges (global counts) -->
+            <!-- Status badges -->
             <div class="flex flex-wrap items-center gap-3 bg-white dark:bg-gray-800 p-3 rounded-lg shadow">
                 <span class="text-xs font-semibold uppercase tracking-wider text-gray-500 dark:text-gray-400">Status:</span>
                 <span class="px-3 py-1 rounded-full text-xs font-medium bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-400">
@@ -246,7 +254,7 @@ const clearSearch = () => {
                 </span>
             </div>
 
-            <!-- Filters with Reset button -->
+            <!-- Filters -->
             <div class="flex flex-wrap items-center gap-4 bg-white dark:bg-gray-800 p-4 rounded-lg shadow">
                 <div class="flex items-center gap-2">
                     <label class="text-sm font-medium text-gray-700 dark:text-gray-300">Category:</label>

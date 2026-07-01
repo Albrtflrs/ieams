@@ -1,14 +1,18 @@
 <script setup>
 import AppLayout from '@/Layouts/AppLayout.vue';
-import { Link, router } from '@inertiajs/vue3';
+import { Link, router, usePage } from '@inertiajs/vue3';
 import { ref, computed, watch } from 'vue';
 
 const props = defineProps({
     transactions: { type: Object, default: () => ({ data: [], links: [] }) },
     summary: { type: Object, default: () => ({ categories: {}, total_expenses: 0, status_counts: {} }) },
     filters: { type: Object, default: () => ({ period: 'this_month', month: '', category: '', status: '', search: '' }) },
-    categories: { type: Array, default: () => [] }, // 👈 dynamic from controller
+    categories: { type: Array, default: () => [] },
 });
+
+const page = usePage();
+const user = computed(() => page.props.auth?.user);
+const canViewTrash = computed(() => user.value && ['super_admin', 'admin'].includes(user.value.role));
 
 const deleteExpense = (id) => {
     if (confirm('Delete this expense record?')) {
@@ -16,9 +20,7 @@ const deleteExpense = (id) => {
     }
 };
 
-// ── Use categories from props ──
 const CATEGORIES = props.categories.length ? props.categories : [];
-
 const STATUSES = ['Paid', 'Unpaid', 'Pending'];
 const PERIODS = [
     { value: 'this_month', label: 'This Month' },
@@ -27,14 +29,12 @@ const PERIODS = [
     { value: 'all_time', label: 'All Time' },
 ];
 
-// ── Filter state ──────────────────────────
 const selectedPeriod = ref(props.filters.period || 'this_month');
 const selectedMonth = ref(props.filters.month || new Date().toISOString().slice(0, 7));
 const selectedCategory = ref(props.filters.category || '');
 const selectedStatus = ref(props.filters.status || '');
 const search = ref(props.filters.search || '');
 
-// ── Debounce helper ────────────────────────
 function debounce(fn, delay) {
     let timeoutId = null;
     return function(...args) {
@@ -43,7 +43,6 @@ function debounce(fn, delay) {
     };
 }
 
-// ── Apply filters ──────────────────────────
 const applyFilter = () => {
     const params = {
         period: selectedPeriod.value,
@@ -61,13 +60,9 @@ const applyFilter = () => {
     });
 };
 
-// ── Debounced apply ────────────────────────
 const debouncedApply = debounce(applyFilter, 300);
-
-// ── Watchers ───────────────────────────────
 watch([selectedPeriod, selectedMonth, selectedCategory, selectedStatus, search], debouncedApply);
 
-// ── Reset filters ──────────────────────────
 const resetFilters = () => {
     selectedPeriod.value = 'this_month';
     selectedMonth.value = new Date().toISOString().slice(0, 7);
@@ -90,7 +85,6 @@ const statusBadgeClass = (status) => {
     return map[status] || 'bg-gray-100 text-gray-800';
 };
 
-// ── Global status counts (from summary) ── 👈 NEW
 const statusCounts = computed(() => props.summary.status_counts ?? {
     Paid: 0,
     Unpaid: 0,
@@ -112,33 +106,41 @@ const statusCounts = computed(() => props.summary.status_counts ?? {
             <!-- Header -->
             <div class="flex flex-wrap justify-between items-center mb-4">
                 <h1 class="text-2xl font-bold">Expense Transactions</h1>
-                <Link :href="route('expenses.create')"
-                    class="bg-emerald-500 hover:bg-emerald-600 text-white px-4 py-2 rounded transition">
-                + Add Expense
-                </Link>
+                <div class="flex items-center gap-3">
+                    <!-- 👇 Trash button (admin only) -->
+                    <Link
+                        v-if="canViewTrash"
+                        href="/expenses/trash-bin"
+                        class="inline-flex items-center gap-1.5 px-3 py-2 text-sm bg-red-50 dark:bg-red-900/20 text-red-700 dark:text-red-400 rounded-lg hover:bg-red-100 dark:hover:bg-red-800/30 transition"
+                    >
+                        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                        </svg>
+                        Trash
+                    </Link>
+                    <Link :href="route('expenses.create')"
+                        class="bg-emerald-500 hover:bg-emerald-600 text-white px-4 py-2 rounded transition">
+                    + Add Expense
+                    </Link>
+                </div>
             </div>
 
             <!-- Status summary badges (global counts) -->
             <div class="flex flex-wrap items-center gap-3 bg-white dark:bg-gray-800 p-3 rounded-lg shadow mb-4">
-                <span
-                    class="text-xs font-semibold uppercase tracking-wider text-gray-500 dark:text-gray-400">Status:</span>
-                <span
-                    class="px-3 py-1 rounded-full text-xs font-medium bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-400">
+                <span class="text-xs font-semibold uppercase tracking-wider text-gray-500 dark:text-gray-400">Status:</span>
+                <span class="px-3 py-1 rounded-full text-xs font-medium bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-400">
                     Paid ({{ statusCounts.Paid }})
                 </span>
-                <span
-                    class="px-3 py-1 rounded-full text-xs font-medium bg-gray-100 text-gray-800 dark:bg-gray-700 dark:text-gray-300">
+                <span class="px-3 py-1 rounded-full text-xs font-medium bg-gray-100 text-gray-800 dark:bg-gray-700 dark:text-gray-300">
                     Unpaid ({{ statusCounts.Unpaid }})
                 </span>
-                <span
-                    class="px-3 py-1 rounded-full text-xs font-medium bg-yellow-100 text-yellow-800 dark:bg-yellow-900/30 dark:text-yellow-400">
+                <span class="px-3 py-1 rounded-full text-xs font-medium bg-yellow-100 text-yellow-800 dark:bg-yellow-900/30 dark:text-yellow-400">
                     Pending ({{ statusCounts.Pending }})
                 </span>
             </div>
 
             <!-- Filters -->
             <div class="flex flex-wrap items-center gap-4 mb-6 bg-white dark:bg-gray-800 p-4 rounded-lg shadow">
-                <!-- Period -->
                 <div class="flex items-center gap-2">
                     <label class="text-sm font-medium text-gray-700 dark:text-gray-300">Period:</label>
                     <select v-model="selectedPeriod" class="border rounded-lg px-3 py-1.5 text-sm dark:bg-gray-700">
@@ -147,8 +149,7 @@ const statusCounts = computed(() => props.summary.status_counts ?? {
                 </div>
                 <div v-if="selectedPeriod === 'this_month'" class="flex items-center gap-2">
                     <label class="text-sm font-medium text-gray-700 dark:text-gray-300">Month:</label>
-                    <input type="month" v-model="selectedMonth"
-                        class="border rounded-lg px-3 py-1.5 text-sm dark:bg-gray-700" />
+                    <input type="month" v-model="selectedMonth" class="border rounded-lg px-3 py-1.5 text-sm dark:bg-gray-700" />
                 </div>
                 <div class="flex items-center gap-2">
                     <label class="text-sm font-medium text-gray-700 dark:text-gray-300">Category:</label>
@@ -202,8 +203,7 @@ const statusCounts = computed(() => props.summary.status_counts ?? {
                     <p class="text-sm uppercase tracking-wider opacity-80">Total Expenses</p>
                     <p class="text-2xl font-bold">{{ peso(summary.total_expenses) }}</p>
                 </div>
-                <div
-                    class="bg-white dark:bg-gray-800 rounded-lg shadow p-4 border border-gray-200 dark:border-gray-700 col-span-3">
+                <div class="bg-white dark:bg-gray-800 rounded-lg shadow p-4 border border-gray-200 dark:border-gray-700 col-span-3">
                     <p class="text-sm font-semibold text-gray-600 dark:text-gray-300 mb-2">By Category</p>
                     <div class="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-2">
                         <div v-for="(total, cat) in categoryTotals" :key="cat"
@@ -225,33 +225,15 @@ const statusCounts = computed(() => props.summary.status_counts ?? {
                 <table class="min-w-full divide-y divide-gray-200 dark:divide-gray-700">
                     <thead class="bg-gray-50 dark:bg-gray-700">
                         <tr>
-                            <th
-                                class="px-4 py-2 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">
-                                ID</th>
-                            <th
-                                class="px-4 py-2 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">
-                                Date</th>
-                            <th
-                                class="px-4 py-2 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">
-                                Supplier</th>
-                            <th
-                                class="px-4 py-2 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">
-                                Category</th>
-                            <th
-                                class="px-4 py-2 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">
-                                Amount</th>
-                            <th
-                                class="px-4 py-2 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">
-                                Status</th>
-                            <th
-                                class="px-4 py-2 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">
-                                Receipt #</th>
-                            <th
-                                class="px-4 py-2 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">
-                                Payment Method</th>
-                            <th
-                                class="px-4 py-2 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">
-                                Actions</th>
+                            <th class="px-4 py-2 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">ID</th>
+                            <th class="px-4 py-2 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">Date</th>
+                            <th class="px-4 py-2 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">Supplier</th>
+                            <th class="px-4 py-2 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">Category</th>
+                            <th class="px-4 py-2 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">Amount</th>
+                            <th class="px-4 py-2 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">Status</th>
+                            <th class="px-4 py-2 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">Receipt #</th>
+                            <th class="px-4 py-2 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">Payment Method</th>
+                            <th class="px-4 py-2 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">Actions</th>
                         </tr>
                     </thead>
                     <tbody class="divide-y divide-gray-200 dark:divide-gray-700">

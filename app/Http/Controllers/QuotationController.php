@@ -428,4 +428,45 @@ class QuotationController extends Controller
 
         return response()->stream($callback, 200, $headers);
     }
+
+    // ─── TRASH ─────────────────────────────────────────────────────────
+    public function trash()
+    {
+        $this->authorize('viewTrash', Quotation::class);
+
+        $quotations = Quotation::onlyTrashed()
+            ->with('client')
+            ->latest('deleted_at')
+            ->paginate(20)
+            ->through(fn($item) => [
+                'id'                => $item->id,
+                'quotation_number'  => $item->quotation_number,
+                'client_name'       => $item->client?->name,
+                'total_amount'      => $item->total_amount,
+                'status'            => $item->status,
+                'deleted_at'        => $item->deleted_at->format('Y-m-d H:i:s'),
+            ]);
+
+        return Inertia::render('Quotations/Trash', [
+            'quotations' => $quotations,
+        ]);
+    }
+
+    // ─── RESTORE ────────────────────────────────────────────────────────
+    public function restore($id)
+    {
+        $quotation = Quotation::withTrashed()->findOrFail($id);
+        $this->authorize('restore', $quotation);
+        $quotation->restore();
+        return redirect()->route('quotations.trash')->with('success', 'Quotation restored.');
+    }
+
+    // ─── FORCE DELETE ──────────────────────────────────────────────────
+    public function forceDelete($id)
+    {
+        $quotation = Quotation::withTrashed()->findOrFail($id);
+        $this->authorize('forceDelete', $quotation);
+        $quotation->forceDelete();
+        return redirect()->route('quotations.trash')->with('success', 'Quotation permanently deleted.');
+    }
 }

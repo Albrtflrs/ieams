@@ -1,6 +1,6 @@
 <script setup>
 import AppLayout from '@/Layouts/AppLayout.vue';
-import { Link, router } from '@inertiajs/vue3';
+import { Link, router, usePage } from '@inertiajs/vue3';
 import { ref, computed, watch } from 'vue';
 import { useSettings } from '@/composables/useSettings';
 import { useForm } from '@inertiajs/vue3';
@@ -17,6 +17,10 @@ const props = defineProps({
 });
 
 const { currency } = useSettings();
+
+const page = usePage();
+const user = computed(() => page.props.auth?.user);
+const canViewTrash = computed(() => user.value && ['super_admin', 'admin'].includes(user.value.role));
 
 const peso = (val) => `${currency.value}${Number(val ?? 0).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
 
@@ -168,7 +172,18 @@ const deleteItem = (id) => {
             <!-- Header -->
             <div class="flex flex-wrap justify-between items-center mb-4">
                 <h1 class="text-2xl font-bold">Quotations</h1>
-                <div class="flex gap-2">
+                <div class="flex items-center gap-3">
+                    <!-- 👇 Trash button (admin only) -->
+                    <Link
+                        v-if="canViewTrash"
+                        href="/quotations/trash-bin"
+                        class="inline-flex items-center gap-1.5 px-3 py-2 text-sm bg-red-50 dark:bg-red-900/20 text-red-700 dark:text-red-400 rounded-lg hover:bg-red-100 dark:hover:bg-red-800/30 transition"
+                    >
+                        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                        </svg>
+                        Trash
+                    </Link>
                     <button
                         @click="showItemModal = true"
                         :disabled="!canManageItems"

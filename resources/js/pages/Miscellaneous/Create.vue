@@ -4,18 +4,19 @@ import { Head, useForm, Link } from '@inertiajs/vue3';
 import { useSettings } from '@/composables/useSettings';
 
 const props = defineProps({
-    transaction: Object,
+    categories: Array,
+    reference_number: String, // 👈 added
 });
 
 const { currency } = useSettings();
 
 const form = useForm({
-    type: props.transaction?.type || 'income',
+    type: 'income',
     date: new Date().toISOString().slice(0, 10),
     amount: '',
     category: '',
     description: '',
-    reference_number: '',
+    // reference_number is NOT in the form – it's auto-generated on the server
 });
 
 function submit() {
@@ -45,6 +46,14 @@ function submit() {
             </div>
 
             <form @submit.prevent="submit" class="bg-white dark:bg-gray-800 p-6 rounded-xl shadow space-y-4">
+
+                <!-- ─── Reference Number (auto‑generated) ─── -->
+                <div>
+                    <label class="block text-sm font-medium text-gray-700 dark:text-gray-300">Reference Number</label>
+                    <input :value="props.reference_number" class="w-full border rounded-lg px-3 py-2 bg-gray-100 dark:bg-gray-700 dark:border-gray-600" readonly />
+                    <p class="text-xs text-gray-500 mt-1">Auto‑generated</p>
+                </div>
+
                 <!-- Type -->
                 <div>
                     <label class="block text-sm font-medium text-gray-700 dark:text-gray-300" title="Select whether this is income or expense.">
@@ -89,14 +98,6 @@ function submit() {
                         Description
                     </label>
                     <textarea v-model="form.description" rows="3" class="w-full border rounded-lg px-3 py-2 dark:bg-gray-700 dark:border-gray-600"></textarea>
-                </div>
-
-                <!-- Reference # -->
-                <div>
-                    <label class="block text-sm font-medium text-gray-700 dark:text-gray-300" title="Optional reference number for tracking.">
-                        Reference #
-                    </label>
-                    <input type="text" v-model="form.reference_number" class="w-full border rounded-lg px-3 py-2 dark:bg-gray-700 dark:border-gray-600" />
                 </div>
 
                 <!-- Actions -->

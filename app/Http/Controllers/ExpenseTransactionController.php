@@ -7,13 +7,36 @@ use App\Models\Supplier;
 use App\Models\Setting;
 use Illuminate\Http\Request;
 use Inertia\Inertia;
-use Illuminate\Support\Facades\DB;
 use Carbon\Carbon;
+use Illuminate\Support\Facades\DB;
 
 class ExpenseTransactionController extends Controller
 {
     // Fallback categories (used if settings are empty)
     private const DEFAULT_CATEGORIES = 'DELIVERY (parcel receiving),DAILY EXPENSES,GAS/MAINTENANCE,SALARY,CASH RECEIVED,LOAN PAYMENT,MONTHLY FIX BILLS';
+
+    // ─── Helper: Apply shared filters to a query builder ──────────────
+    private function applyFilters($query, ?Carbon $startDate, ?Carbon $endDate, string $category, string $status, string $search)
+    {
+        if ($startDate && $endDate) {
+            $query->whereBetween('date', [$startDate, $endDate]);
+        }
+        if ($category !== '') {
+            $query->where('category', $category);
+        }
+        if ($status !== '') {
+            $query->where('status', $status);
+        }
+        if ($search !== '') {
+            $query->where(function ($q) use ($search) {
+                $q->where('description', 'like', "%{$search}%")
+                  ->orWhere('receipt_number', 'like', "%{$search}%")
+                  ->orWhereHas('supplier', fn ($cq) => $cq->where('name', 'like', "%{$search}%"));
+            });
+        }
+
+        return $query;
+    }
 
     /**
      * Display a listing of expense transactions with filters and search.
@@ -54,59 +77,29 @@ class ExpenseTransactionController extends Controller
                 $endDate = Carbon::parse($selectedMonth)->endOfMonth();
         }
 
-        // ─── Build summary query (for total and category breakdown) ──
-        $summaryQuery = ExpenseTransaction::query();
-        if ($startDate && $endDate) $summaryQuery->whereBetween('date', [$startDate, $endDate]);
-        if ($categoryFilter !== '') $summaryQuery->where('category', $categoryFilter);
-        if ($statusFilter !== '') $summaryQuery->where('status', $statusFilter);
-        if ($search !== '') {
-            $summaryQuery->where(function ($q) use ($search) {
-                $q->where('description', 'like', "%{$search}%")
-                  ->orWhere('receipt_number', 'like', "%{$search}%")
-                  ->orWhereHas('supplier', function ($q2) use ($search) {
-                      $q2->where('name', 'like', "%{$search}%");
-                  });
-            });
-        }
-        $totalExpenses = $summaryQuery->sum('amount');
+        // ─── Total expenses ──────────────────────────────────────
+        $totalExpenses = $this->applyFilters(
+            ExpenseTransaction::query(), $startDate, $endDate, $categoryFilter, $statusFilter, $search
+        )->sum('amount');
 
-        // ─── Category totals (respecting filters) ──────────────
-        $categoryTotals = ExpenseTransaction::query()
-            ->when($startDate && $endDate, fn($q) => $q->whereBetween('date', [$startDate, $endDate]))
-            ->when($categoryFilter !== '', fn($q) => $q->where('category', $categoryFilter))
-            ->when($statusFilter !== '', fn($q) => $q->where('status', $statusFilter))
-            ->when($search !== '', function ($q) use ($search) {
-                $q->where(function ($q2) use ($search) {
-                    $q2->where('description', 'like', "%{$search}%")
-                       ->orWhere('receipt_number', 'like', "%{$search}%")
-                       ->orWhereHas('supplier', function ($q3) use ($search) {
-                           $q3->where('name', 'like', "%{$search}%");
-                       });
-                });
-            })
-            ->select('category', DB::raw('SUM(amount) as total'))
+        // ─── Category totals ────────────────────────────────────
+        $categoryTotals = $this->applyFilters(
+            ExpenseTransaction::query(), $startDate, $endDate, $categoryFilter, $statusFilter, $search
+        )
+            ->selectRaw('category, SUM(amount) as total')
             ->groupBy('category')
             ->pluck('total', 'category')
             ->toArray();
 
-        // ─── Status counts (global, for all filtered records) ── 👈 NEW
-        $statusQuery = ExpenseTransaction::query();
-        if ($startDate && $endDate) $statusQuery->whereBetween('date', [$startDate, $endDate]);
-        if ($categoryFilter !== '') $statusQuery->where('category', $categoryFilter);
-        if ($statusFilter !== '') $statusQuery->where('status', $statusFilter);
-        if ($search !== '') {
-            $statusQuery->where(function ($q) use ($search) {
-                $q->where('description', 'like', "%{$search}%")
-                  ->orWhere('receipt_number', 'like', "%{$search}%")
-                  ->orWhereHas('supplier', function ($q2) use ($search) {
-                      $q2->where('name', 'like', "%{$search}%");
-                  });
-            });
-        }
-        $statusCounts = $statusQuery->select('status', DB::raw('COUNT(*) as count'))
+        // ─── Status counts ──────────────────────────────────────
+        $statusCounts = $this->applyFilters(
+            ExpenseTransaction::query(), $startDate, $endDate, $categoryFilter, $statusFilter, $search
+        )
+            ->selectRaw('status, COUNT(*) as count')
             ->groupBy('status')
             ->pluck('count', 'status')
             ->toArray();
+
         // Ensure all statuses are present (even if zero)
         $allStatuses = ['Paid', 'Unpaid', 'Pending'];
         foreach ($allStatuses as $s) {
@@ -118,42 +111,31 @@ class ExpenseTransactionController extends Controller
         $summary = [
             'categories'     => $categoryTotals,
             'total_expenses' => $totalExpenses,
-            'status_counts'  => $statusCounts, // 👈 NEW
+            'status_counts'  => $statusCounts,
         ];
 
         // ─── Transactions (paginated) ──────────────────────────
         $perPage = Setting::get('rows_per_page', 20);
 
-        $transactionsQuery = ExpenseTransaction::with('supplier');
-        if ($startDate && $endDate) $transactionsQuery->whereBetween('date', [$startDate, $endDate]);
-        if ($categoryFilter !== '') $transactionsQuery->where('category', $categoryFilter);
-        if ($statusFilter !== '') $transactionsQuery->where('status', $statusFilter);
-        if ($search !== '') {
-            $transactionsQuery->where(function ($q) use ($search) {
-                $q->where('description', 'like', "%{$search}%")
-                  ->orWhere('receipt_number', 'like', "%{$search}%")
-                  ->orWhereHas('supplier', function ($q2) use ($search) {
-                      $q2->where('name', 'like', "%{$search}%");
-                  });
-            });
-        }
+        $transactionsQuery = $this->applyFilters(
+            ExpenseTransaction::with('supplier'), $startDate, $endDate, $categoryFilter, $statusFilter, $search
+        );
 
         $transactions = $transactionsQuery->latest()
             ->paginate($perPage)
-            ->withQueryString()
             ->through(fn($item) => [
-                'id' => $item->id,
-                'date' => $item->date->format('Y-m-d'),
-                'supplier_name' => $item->supplier?->name,
-                'category' => $item->category,
-                'amount' => $item->amount,
+                'id'             => $item->id,
+                'date'           => $item->date->format('Y-m-d'),
+                'supplier_name'  => $item->supplier?->name,
+                'category'       => $item->category,
+                'amount'         => $item->amount,
                 'receipt_number' => $item->receipt_number,
                 'payment_method' => $item->payment_method,
-                'status' => $item->status,
-                'created_at' => $item->created_at->format('Y-m-d'),
+                'status'         => $item->status,
+                'created_at'     => $item->created_at->format('Y-m-d'),
             ]);
 
-        // ─── Category list from settings (for the frontend) ── 👈 NEW
+        // ─── Category list from settings ──────────────────────
         $categories = explode(',', Setting::get('default_expense_categories', self::DEFAULT_CATEGORIES));
 
         return Inertia::render('Expenses/Index', [
@@ -166,7 +148,7 @@ class ExpenseTransactionController extends Controller
                 'status'   => $statusFilter,
                 'search'   => $search,
             ],
-            'categories'   => $categories, // 👈 NEW
+            'categories'   => $categories,
         ]);
     }
 
@@ -247,12 +229,53 @@ class ExpenseTransactionController extends Controller
     }
 
     /**
-     * Remove the specified expense from storage.
+     * Remove the specified expense from storage (soft delete).
      */
     public function destroy(ExpenseTransaction $expense)
     {
         $this->authorize('delete', $expense);
         $expense->delete();
         return redirect()->route('expenses.index')->with('success', 'Expense deleted.');
+    }
+
+    // ─── TRASH PAGE ─────────────────────────────────────────────────────
+    public function trash()
+    {
+        $this->authorize('viewTrash', ExpenseTransaction::class);
+
+        $transactions = ExpenseTransaction::onlyTrashed()
+            ->with('supplier')
+            ->latest('deleted_at')
+            ->paginate(20)
+            ->through(fn($item) => [
+                'id'             => $item->id,
+                'date'           => $item->date->format('Y-m-d'),
+                'supplier_name'  => $item->supplier?->name,
+                'category'       => $item->category,
+                'amount'         => $item->amount,
+                'deleted_at'     => $item->deleted_at->format('Y-m-d H:i:s'),
+            ]);
+
+        return Inertia::render('Expenses/Trash', [
+            'transactions' => $transactions,
+        ]);
+    }
+
+    // ─── RESTORE ────────────────────────────────────────────────────────
+    public function restore($id)
+    {
+        $expense = ExpenseTransaction::withTrashed()->findOrFail($id);
+        $this->authorize('restore', $expense);
+        $expense->restore();
+        return redirect()->route('expenses.trash')->with('success', 'Expense restored.');
+    }
+
+    // ─── FORCE DELETE ──────────────────────────────────────────────────
+    public function forceDelete($id)
+    {
+        $expense = ExpenseTransaction::withTrashed()->findOrFail($id);
+        $this->authorize('forceDelete', $expense);
+        $expense->forceDelete();
+        return redirect()->route('expenses.trash')->with('success', 'Expense permanently deleted.');
     }
 }

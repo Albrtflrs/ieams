@@ -37,4 +37,20 @@ class ExpensePolicy
     {
         return in_array($user->role, ['super_admin', 'admin', 'manager']);
     }
+
+    // ─── Trash / Restore / Force Delete ──────────────────────────────
+    public function viewTrash(User $user): bool
+    {
+        return in_array($user->role, ['super_admin', 'admin']);
+    }
+
+    public function restore(User $user, ExpenseTransaction $expense): bool
+    {
+        return in_array($user->role, ['super_admin', 'admin']);
+    }
+
+    public function forceDelete(User $user, ExpenseTransaction $expense): bool
+    {
+        return in_array($user->role, ['super_admin', 'admin']);
+    }
 }

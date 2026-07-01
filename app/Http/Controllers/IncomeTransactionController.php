@@ -1,14 +1,12 @@
 <?php
 
 namespace App\Http\Controllers;
-
 use App\Models\IncomeTransaction;
 use App\Models\Client;
 use App\Models\Municipality;
 use App\Models\Setting;
 use Illuminate\Http\Request;
 use Inertia\Inertia;
-use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
 
 class IncomeTransactionController extends Controller
@@ -25,6 +23,31 @@ class IncomeTransactionController extends Controller
         return $number;
     }
 
+    // ─── Helper: Apply shared filters ──────────────────────────────────
+    private function applyFilters($query, string $category, string $status, string $search, string $dateFrom, string $dateTo)
+    {
+        if ($category !== '') {
+            $query->where('category', $category);
+        }
+        if ($status !== '') {
+            $query->where('status', $status);
+        }
+        if ($search !== '') {
+            $query->where(function ($q) use ($search) {
+                $q->where('agency_department', 'like', "%{$search}%")
+                  ->orWhere('particulars', 'like', "%{$search}%")
+                  ->orWhereHas('client', fn ($cq) => $cq->where('name', 'like', "%{$search}%"));
+            });
+        }
+        if ($dateFrom !== '') {
+            $query->whereDate('date_delivered', '>=', $dateFrom);
+        }
+        if ($dateTo !== '') {
+            $query->whereDate('date_delivered', '<=', $dateTo);
+        }
+        return $query;
+    }
+
     // ─── Index ──────────────────────────────────────────────────────────
     public function index()
     {
@@ -37,66 +60,41 @@ class IncomeTransactionController extends Controller
         $dateFrom = request('date_from', '');
         $dateTo = request('date_to', '');
 
-        // ── Build filter conditions ──
-        $conditions = [];
-        $bindings = [];
-
-        if ($category !== '') {
-            $conditions[] = 'category = ?';
-            $bindings[] = $category;
-        }
-        if ($status !== '') {
-            $conditions[] = 'status = ?';
-            $bindings[] = $status;
-        }
-        if ($search !== '') {
-            $conditions[] = '(agency_department LIKE ? OR particulars LIKE ? OR client_id IN (SELECT id FROM clients WHERE name LIKE ?))';
-            $bindings[] = "%{$search}%";
-            $bindings[] = "%{$search}%";
-            $bindings[] = "%{$search}%";
-        }
-        if ($dateFrom !== '') {
-            $conditions[] = 'date_delivered >= ?';
-            $bindings[] = $dateFrom;
-        }
-        if ($dateTo !== '') {
-            $conditions[] = 'date_delivered <= ?';
-            $bindings[] = $dateTo;
-        }
-
-        $whereClause = count($conditions) > 0 ? 'WHERE ' . implode(' AND ', $conditions) : '';
-
         // ── Category totals ──
-        $categorySql = "SELECT category, SUM(gross_price) as total FROM income_transactions {$whereClause} GROUP BY category";
-        $categoryTotalsResult = DB::select($categorySql, $bindings);
-        $categoryTotals = [];
-        foreach ($categoryTotalsResult as $row) {
-            $categoryTotals[$row->category] = (float) $row->total;
-        }
+        $categoryTotals = $this->applyFilters(
+            IncomeTransaction::query(), $category, $status, $search, $dateFrom, $dateTo
+        )
+            ->selectRaw('category, SUM(gross_price) as total')
+            ->groupBy('category')
+            ->pluck('total', 'category')
+            ->map(fn ($v) => (float) $v)
+            ->toArray();
 
         // ── Summary totals ──
-        $summarySql = "
-            SELECT
+        $aggregates = $this->applyFilters(
+            IncomeTransaction::query(), $category, $status, $search, $dateFrom, $dateTo
+        )
+            ->selectRaw('
                 SUM(gross_price) as gross_profit,
                 SUM(amount_paid) as amount_paid,
                 SUM(gross_price - COALESCE(amount_paid, 0)) as receivables,
                 SUM(gross_price - COALESCE(deductions, 0)) as net_sales,
                 SUM(COALESCE(royalty_percent, 0) * gross_price / 100) as royalty_gross,
                 SUM(COALESCE(royalty_percent, 0) * (gross_price - COALESCE(deductions, 0)) / 100) as royalty_net
-            FROM income_transactions
-            {$whereClause}
-        ";
-        $aggregates = DB::select($summarySql, $bindings);
-        $aggregates = $aggregates[0] ?? null;
+            ')
+            ->toBase()
+            ->first();
 
-        // ── Status counts (global, for all filtered records) ──
-        $statusSql = "SELECT status, COUNT(*) as count FROM income_transactions {$whereClause} GROUP BY status";
-        $statusCountsResult = DB::select($statusSql, $bindings);
-        $statusCounts = [];
-        foreach ($statusCountsResult as $row) {
-            $statusCounts[$row->status] = (int) $row->count;
-        }
-        // Ensure all statuses are present (even if zero)
+        // ── Status counts ──
+        $statusCounts = $this->applyFilters(
+            IncomeTransaction::query(), $category, $status, $search, $dateFrom, $dateTo
+        )
+            ->selectRaw('status, COUNT(*) as count')
+            ->groupBy('status')
+            ->pluck('count', 'status')
+            ->map(fn ($v) => (int) $v)
+            ->toArray();
+
         $allStatuses = ['Paid', 'Unpaid', 'Cash On Hold', 'Paid Royalty'];
         foreach ($allStatuses as $s) {
             if (!isset($statusCounts[$s])) {
@@ -112,7 +110,7 @@ class IncomeTransactionController extends Controller
             'net_sales'      => (float) ($aggregates->net_sales ?? 0),
             'royalty_gross'  => (float) ($aggregates->royalty_gross ?? 0),
             'royalty_net'    => (float) ($aggregates->royalty_net ?? 0),
-            'status_counts'  => $statusCounts, // 👈 added
+            'status_counts'  => $statusCounts,
         ];
 
         Log::info('Income Summary (Raw)', $summary);
@@ -120,30 +118,13 @@ class IncomeTransactionController extends Controller
         // ── Transactions (paginated) ──
         $perPage = Setting::get('rows_per_page', 20);
 
-        $transactionsQuery = IncomeTransaction::with('client');
-        if ($category !== '') {
-            $transactionsQuery->where('category', $category);
-        }
-        if ($status !== '') {
-            $transactionsQuery->where('status', $status);
-        }
-        if ($search !== '') {
-            $transactionsQuery->where(function ($q) use ($search) {
-                $q->where('agency_department', 'like', "%{$search}%")
-                  ->orWhere('particulars', 'like', "%{$search}%")
-                  ->orWhereHas('client', fn($cq) => $cq->where('name', 'like', "%{$search}%"));
-            });
-        }
-        if ($dateFrom !== '') {
-            $transactionsQuery->whereDate('date_delivered', '>=', $dateFrom);
-        }
-        if ($dateTo !== '') {
-            $transactionsQuery->whereDate('date_delivered', '<=', $dateTo);
-        }
+        $transactionsQuery = $this->applyFilters(
+            IncomeTransaction::with('client'), $category, $status, $search, $dateFrom, $dateTo
+        );
 
         $transactions = $transactionsQuery->latest()
             ->paginate($perPage)
-            ->through(fn($item) => [
+            ->through(fn ($item) => [
                 'id'               => $item->id,
                 'item_no'          => $item->item_no,
                 'client_name'      => $item->client?->name,
@@ -167,7 +148,7 @@ class IncomeTransactionController extends Controller
                 'created_at'       => optional($item->created_at)->format('Y-m-d'),
             ]);
 
-        // ── Category list from settings (for the frontend) ──
+        // ── Category list from settings ──
         $categories = explode(',', Setting::get('default_income_categories', self::FALLBACK_CATEGORIES));
 
         return Inertia::render('Income/Index', [
@@ -180,7 +161,7 @@ class IncomeTransactionController extends Controller
                 'date_from'  => $dateFrom,
                 'date_to'    => $dateTo,
             ],
-            'categories'   => $categories, // 👈 added
+            'categories'   => $categories,
         ]);
     }
 
@@ -320,7 +301,7 @@ class IncomeTransactionController extends Controller
         return redirect()->route('income.index')->with('success', 'Income updated.');
     }
 
-    // ─── Destroy ────────────────────────────────────────────────────────
+    // ─── Destroy (soft delete) ─────────────────────────────────────────
     public function destroy(IncomeTransaction $income)
     {
         $this->authorize('delete', $income);
@@ -351,6 +332,46 @@ class IncomeTransactionController extends Controller
         ]);
 
         return redirect()->route('income.index')->with('success', 'Income marked as paid.');
+    }
+
+    // ─── TRASH PAGE ─────────────────────────────────────────────────────
+    public function trash()
+    {
+        $this->authorize('viewTrash', IncomeTransaction::class);
+
+        $transactions = IncomeTransaction::onlyTrashed()
+            ->with('client')
+            ->latest('deleted_at')
+            ->paginate(20)
+            ->through(fn($item) => [
+                'id'          => $item->id,
+                'item_no'     => $item->item_no,
+                'client_name' => $item->client?->name,
+                'amount_paid' => $item->amount_paid,
+                'deleted_at'  => $item->deleted_at->format('Y-m-d H:i:s'),
+            ]);
+
+        return Inertia::render('Income/Trash', [
+            'transactions' => $transactions,
+        ]);
+    }
+
+    // ─── RESTORE ────────────────────────────────────────────────────────
+    public function restore($id)
+    {
+        $income = IncomeTransaction::withTrashed()->findOrFail($id);
+        $this->authorize('restore', $income);
+        $income->restore();
+        return redirect()->route('income.trash')->with('success', 'Income restored.');
+    }
+
+    // ─── FORCE DELETE (permanent) ──────────────────────────────────────
+    public function forceDelete($id)
+    {
+        $income = IncomeTransaction::withTrashed()->findOrFail($id);
+        $this->authorize('forceDelete', $income);
+        $income->forceDelete();
+        return redirect()->route('income.trash')->with('success', 'Income permanently deleted.');
     }
 
     // ─── Helper: Municipalities with Barangays ────────────────────────

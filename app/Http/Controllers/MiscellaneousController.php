@@ -91,22 +91,44 @@ class MiscellaneousController extends Controller
     {
         $this->authorize('create', MiscellaneousTransaction::class);
         $categories = MiscellaneousTransaction::CATEGORIES;
-        return Inertia::render('Miscellaneous/Create', ['categories' => $categories]);
+
+        // Generate a preview reference number (optional, for display)
+        $prefix = Setting::get('misc_prefix', 'MISC-');
+        $next = Setting::get('misc_next_number', 1);
+        $reference = $prefix . str_pad($next, 6, '0', STR_PAD_LEFT);
+
+        return Inertia::render('Miscellaneous/Create', [
+            'categories' => $categories,
+            'reference_number' => $reference, // pass to the frontend if you want to show it
+        ]);
     }
 
     public function store(Request $request)
     {
         $this->authorize('create', MiscellaneousTransaction::class);
+
         $validated = $request->validate([
             'type' => 'required|in:income,expense',
             'date' => 'required|date',
             'amount' => 'required|numeric|min:0',
             'category' => ['nullable', 'in:' . implode(',', MiscellaneousTransaction::CATEGORIES)],
             'description' => 'nullable|string',
-            'reference_number' => 'nullable|string|max:100',
+            'reference_number' => 'nullable|string|max:100', // kept nullable for fallback
         ]);
+
+        // ─── Auto‑generate reference number ──────────
+        $prefix = Setting::get('misc_prefix', 'MISC-');
+        $next = Setting::get('misc_next_number', 1);
+        $reference = $prefix . str_pad($next, 6, '0', STR_PAD_LEFT);
+
+        $validated['reference_number'] = $reference;
         $validated['created_by'] = auth()->id();
+
         MiscellaneousTransaction::create($validated);
+
+        // Increment next number
+        Setting::updateOrCreate(['key' => 'misc_next_number'], ['value' => $next + 1]);
+
         return redirect()->route('misc.index')->with('success', 'Miscellaneous transaction saved.');
     }
 
@@ -132,6 +154,7 @@ class MiscellaneousController extends Controller
     public function update(Request $request, MiscellaneousTransaction $misc)
     {
         $this->authorize('update', $misc);
+
         $validated = $request->validate([
             'type' => 'required|in:income,expense',
             'date' => 'required|date',
@@ -140,7 +163,9 @@ class MiscellaneousController extends Controller
             'description' => 'nullable|string',
             'reference_number' => 'nullable|string|max:100',
         ]);
+
         $misc->update($validated);
+
         return redirect()->route('misc.index')->with('success', 'Miscellaneous transaction updated.');
     }
 

@@ -52,7 +52,7 @@ class SummaryController extends Controller
             }
         }
 
-        // Build base queries
+        // ─── Base queries ────────────────────────────────────
         $incomeQuery = IncomeTransaction::where('is_miscellaneous', false);
         $expenseQuery = ExpenseTransaction::where('is_miscellaneous', false);
         $miscIncomeQuery = MiscellaneousTransaction::where('type', 'income');
@@ -65,7 +65,7 @@ class SummaryController extends Controller
             $miscExpenseQuery->whereBetween('created_at', [$startDate, $endDate]);
         }
 
-        // Calculate totals
+        // ─── Totals ──────────────────────────────────────────
         $totalRevenue = (float) $incomeQuery->sum('amount_paid') + (float) $miscIncomeQuery->sum('amount');
         $totalExpenses = (float) $expenseQuery->sum('amount') + (float) $miscExpenseQuery->sum('amount');
         $netProfit = $totalRevenue - $totalExpenses;
@@ -87,18 +87,18 @@ class SummaryController extends Controller
         // Cash balance (all-time)
         $cashBalance = (float) IncomeTransaction::sum('amount_paid') - (float) ExpenseTransaction::sum('amount');
 
-        // ---- NEW: Receivables (unpaid income) ----
+        // Receivables (unpaid income)
         $receivables = (float) IncomeTransaction::where('status', 'Unpaid')
             ->orWhere('status', 'Cash On Hold')
             ->when($startDate && $endDate, fn($q) => $q->whereBetween('created_at', [$startDate, $endDate]))
             ->sum('amount_paid');
 
-        // Ratios
+        // ─── Ratios ──────────────────────────────────────────
         $grossMargin = $totalRevenue > 0 ? ($grossProfit / $totalRevenue) * 100 : 0;
         $operatingMargin = $totalRevenue > 0 ? ($operatingProfit / $totalRevenue) * 100 : 0;
         $netMargin = $totalRevenue > 0 ? ($netProfit / $totalRevenue) * 100 : 0;
 
-        // ---- Breakdowns for Modal ----
+        // ─── Breakdowns for Modal ──────────────────────────
         $incomeByCategory = IncomeTransaction::select('category', DB::raw('SUM(amount_paid) as total'))
             ->where('is_miscellaneous', false)
             ->when($startDate && $endDate, fn($q) => $q->whereBetween('created_at', [$startDate, $endDate]))
@@ -115,7 +115,7 @@ class SummaryController extends Controller
             ->map(fn($item) => ['name' => $item->category ?? 'Uncategorized', 'value' => (float) $item->total])
             ->toArray();
 
-        // Monthly trend for income and expenses (last 12 months)
+        // ─── Monthly trend ──────────────────────────────────
         $months = collect(range(0, 11))->map(fn($i) => Carbon::now()->subMonths(11 - $i)->format('M Y'))->values();
         $incomeTrend = [];
         $expenseTrend = [];
@@ -128,22 +128,42 @@ class SummaryController extends Controller
                 ->whereBetween('created_at', [$monthStart, $monthEnd])->sum('amount');
         }
 
-        // Top Client (with ID for linking)
-        $topClient = IncomeTransaction::with('client')
+        // ─── TOP 5 INCOME CLIENTS (by amount_paid) ──────── 👈 NEW
+        $topIncomeClients = IncomeTransaction::with('client')
             ->where('is_miscellaneous', false)
             ->when($startDate && $endDate, fn($q) => $q->whereBetween('created_at', [$startDate, $endDate]))
             ->select('client_id', DB::raw('SUM(amount_paid) as total'))
             ->groupBy('client_id')
             ->orderBy('total', 'desc')
-            ->first();
+            ->limit(5)   // change to 3 if you prefer
+            ->get()
+            ->map(fn($item) => [
+                'id'    => $item->client_id,
+                'name'  => $item->client?->name ?? 'Unknown',
+                'total' => (float) $item->total,
+            ])
+            ->toArray();
 
-        $topClientData = $topClient ? [
-            'id' => $topClient->client_id,
-            'name' => $topClient->client?->name ?? 'Unknown',
-            'total' => (float) $topClient->total,
-        ] : null;
+        // ─── TOP 5 EXPENSE CLIENTS (by amount) ───────────── 👈 NEW
+        $topExpenseClients = ExpenseTransaction::with('supplier')
+            ->where('is_miscellaneous', false)
+            ->when($startDate && $endDate, fn($q) => $q->whereBetween('created_at', [$startDate, $endDate]))
+            ->select('supplier_id', DB::raw('SUM(amount) as total'))
+            ->groupBy('supplier_id')
+            ->orderBy('total', 'desc')
+            ->limit(5)   // change to 3 if you prefer
+            ->get()
+            ->map(fn($item) => [
+                'id'    => $item->supplier_id,
+                'name'  => $item->supplier?->name ?? 'Unknown',
+                'total' => (float) $item->total,
+            ])
+            ->toArray();
 
-        // Prepare data for Inertia
+        // (Optional) Keep old single top_client for backward compatibility
+        $topClient = $topIncomeClients[0] ?? null;
+
+        // ─── Return to Inertia ──────────────────────────────
         return Inertia::render('Summary/Index', [
             'period' => $period,
             'month' => $selectedMonth,
@@ -158,7 +178,7 @@ class SummaryController extends Controller
                 'operating_expenses' => $operatingExpenses,
                 'operating_profit' => $operatingProfit,
                 'cash_balance' => $cashBalance,
-                'receivables' => $receivables,  // <-- added
+                'receivables' => $receivables,
                 'gross_margin' => $grossMargin,
                 'operating_margin' => $operatingMargin,
                 'net_margin' => $netMargin,
@@ -168,7 +188,11 @@ class SummaryController extends Controller
             'months' => $months,
             'income_trend' => $incomeTrend,
             'expense_trend' => $expenseTrend,
-            'top_client' => $topClientData,
+            // New arrays for the updated view
+            'top_income_clients' => $topIncomeClients,   // 👈 NEW
+            'top_expense_clients' => $topExpenseClients, // 👈 NEW
+            // Old single client (kept for backward compatibility)
+            'top_client' => $topClient,
         ]);
     }
 }

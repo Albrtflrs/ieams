@@ -4,10 +4,13 @@ namespace App\Models;
 
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Database\Eloquent\SoftDeletes;
+use Spatie\Activitylog\Traits\LogsActivity;
+use Spatie\Activitylog\LogOptions;
 
 class ExpenseTransaction extends Model
 {
-    use HasFactory;
+    use SoftDeletes, HasFactory, LogsActivity;
 
     protected $fillable = [
         'supplier_id',
@@ -19,7 +22,7 @@ class ExpenseTransaction extends Model
         'payment_method',
         'is_miscellaneous',
         'created_by',
-        'status', // <-- added
+        'status',
     ];
 
     protected $casts = [
@@ -36,5 +39,13 @@ class ExpenseTransaction extends Model
     public function creator()
     {
         return $this->belongsTo(User::class, 'created_by');
+    }
+
+    public function getActivitylogOptions(): LogOptions
+    {
+        return LogOptions::defaults()
+            ->logAll()
+            ->logOnlyDirty()
+            ->dontSubmitEmptyLogs();
     }
 }

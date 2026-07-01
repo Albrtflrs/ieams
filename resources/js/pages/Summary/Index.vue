@@ -16,7 +16,8 @@ const props = defineProps({
     months: Array,
     income_trend: Array,
     expense_trend: Array,
-    top_client: Object,
+    top_income_clients: { type: Array, default: () => [] },
+    top_expense_clients: { type: Array, default: () => [] },
 });
 
 const { currency } = useSettings();
@@ -51,7 +52,6 @@ const debouncedApply = () => {
 
 watch([selectedPeriod, selectedMonth, dateFrom, dateTo], debouncedApply);
 
-// Quick period setter
 function setPeriod(period) {
     selectedPeriod.value = period;
     if (!['this_month', 'last_month'].includes(period)) {
@@ -60,7 +60,6 @@ function setPeriod(period) {
     applyFilter();
 }
 
-// Format number with commas
 const formatNumber = (val) => Number(val ?? 0).toLocaleString();
 
 // Modal state
@@ -157,7 +156,6 @@ function closeModal() {
     modalShow.value = false;
 }
 
-// ─── Cards definition ────────────────────
 const mainCards = computed(() => [
     { 
         key: 'revenue', 
@@ -278,20 +276,17 @@ const mainCards = computed(() => [
     },
 ]);
 
-// ─── Ratio cards ──────────────────────────
 const ratioCards = computed(() => [
     { label: 'Gross Margin', key: 'gross_margin', suffix: '%', icon: '📈', color: 'from-green-400 to-emerald-500' },
     { label: 'Operating Margin', key: 'operating_margin', suffix: '%', icon: '📊', color: 'from-blue-400 to-indigo-500' },
     { label: 'Net Margin', key: 'net_margin', suffix: '%', icon: '🎯', color: 'from-purple-400 to-violet-500' },
 ]);
 
-// ─── Helpers ──────────────────────────────
 const getVal = (key) => {
     const v = props.metrics?.[key];
     return typeof v === 'number' ? v : 0;
 };
 
-// ─── Icon SVG render helper ──────────────
 const iconPath = (d) => d;
 </script>
 
@@ -438,16 +433,41 @@ const iconPath = (d) => d;
                 </div>
             </div>
 
-            <!-- ─── Top Client ───────────────────────────────── -->
-            <div class="bg-white dark:bg-gray-800 p-4 rounded shadow">
-                <h2 class="text-lg font-semibold mb-3">🏆 Top Client (by Revenue)</h2>
-                <div v-if="top_client" class="flex justify-between items-center border-b pb-2">
-                    <Link :href="route('clients.show', top_client.id)" class="text-blue-600 hover:underline font-medium">
-                        {{ top_client.name }}
-                    </Link>
-                    <span class="text-emerald-600 dark:text-emerald-400 font-bold">{{ peso(top_client.total) }}</span>
+            <!-- ─── Top Clients ───────────────────────────────── -->
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <!-- Top Income Clients -->
+                <div class="bg-white dark:bg-gray-800 p-4 rounded shadow">
+                    <h2 class="text-lg font-semibold mb-3 flex items-center">
+                        <span class="text-emerald-500 mr-2">🏆</span> Top Income Clients
+                    </h2>
+                    <div v-if="top_income_clients.length" class="space-y-2">
+                        <div v-for="client in top_income_clients" :key="client.id"
+                             class="flex justify-between items-center border-b border-gray-100 dark:border-gray-700 py-2">
+                            <Link :href="route('clients.show', client.id)" class="text-blue-600 hover:underline font-medium">
+                                {{ client.name }}
+                            </Link>
+                            <span class="text-emerald-600 dark:text-emerald-400 font-bold">{{ peso(client.total) }}</span>
+                        </div>
+                    </div>
+                    <div v-else class="text-gray-500">No income data for this period.</div>
                 </div>
-                <div v-else class="text-gray-500">No data for this period.</div>
+
+                <!-- Top Expense Clients -->
+                <div class="bg-white dark:bg-gray-800 p-4 rounded shadow">
+                    <h2 class="text-lg font-semibold mb-3 flex items-center">
+                        <span class="text-rose-500 mr-2">📉</span> Top Expense Clients
+                    </h2>
+                    <div v-if="top_expense_clients.length" class="space-y-2">
+                        <div v-for="client in top_expense_clients" :key="client.id"
+                             class="flex justify-between items-center border-b border-gray-100 dark:border-gray-700 py-2">
+                            <Link :href="route('suppliers.show', client.id)" class="text-blue-600 hover:underline font-medium">
+                                {{ client.name }}
+                            </Link>
+                            <span class="text-rose-600 dark:text-rose-400 font-bold">{{ peso(client.total) }}</span>
+                        </div>
+                    </div>
+                    <div v-else class="text-gray-500">No expense data for this period.</div>
+                </div>
             </div>
         </div>
 

@@ -5,19 +5,18 @@ import { useSettings } from '@/composables/useSettings';
 
 const props = defineProps({
     transaction: Object,
+    categories: Array, // optional, if you need them
 });
 
 const { currency } = useSettings();
 
-console.log('Transaction data:', props.transaction);
-
+// Keep reference_number out of the form (read-only display)
 const form = useForm({
     type: props.transaction?.type || 'income',
     date: props.transaction?.date || '',
     amount: props.transaction?.amount || '',
     category: props.transaction?.category || '',
     description: props.transaction?.description || '',
-    reference_number: props.transaction?.reference_number || '',
 });
 
 function submit() {
@@ -58,6 +57,13 @@ function submit() {
             </div>
 
             <form @submit.prevent="submit" class="bg-white dark:bg-gray-800 p-6 rounded-xl shadow space-y-4">
+
+                <!-- ─── Reference Number (read‑only) ─── -->
+                <div>
+                    <label class="block text-sm font-medium text-gray-700 dark:text-gray-300">Reference Number</label>
+                    <input :value="props.transaction?.reference_number || '—'" class="w-full border rounded-lg px-3 py-2 bg-gray-100 dark:bg-gray-700 dark:border-gray-600" readonly />
+                </div>
+
                 <!-- Type -->
                 <div>
                     <label class="block text-sm font-medium text-gray-700 dark:text-gray-300" title="Select whether this is income or expense.">
@@ -102,14 +108,6 @@ function submit() {
                         Description
                     </label>
                     <textarea v-model="form.description" rows="3" class="w-full border rounded-lg px-3 py-2 dark:bg-gray-700 dark:border-gray-600"></textarea>
-                </div>
-
-                <!-- Reference # -->
-                <div>
-                    <label class="block text-sm font-medium text-gray-700 dark:text-gray-300" title="Optional reference number for tracking.">
-                        Reference #
-                    </label>
-                    <input type="text" v-model="form.reference_number" class="w-full border rounded-lg px-3 py-2 dark:bg-gray-700 dark:border-gray-600" />
                 </div>
 
                 <!-- Actions -->

@@ -20,13 +20,11 @@ class QuotationPolicy
         return in_array($user->role, ['super_admin', 'admin', 'manager']);
     }
 
-    // ✅ Staff can NOW create quotations
     public function create(User $user): bool
     {
         return in_array($user->role, ['super_admin', 'admin', 'manager', 'staff']);
     }
 
-    // ✅ Staff can update their own draft quotations
     public function update(User $user, Quotation $quotation): bool
     {
         if ($user->role === 'staff') {
@@ -49,5 +47,21 @@ class QuotationPolicy
             return false;
         }
         return in_array($user->role, ['super_admin', 'admin', 'manager']);
+    }
+
+    // ─── Trash / Restore / Force Delete ──────────────────────────────
+    public function viewTrash(User $user): bool
+    {
+        return in_array($user->role, ['super_admin', 'admin']);
+    }
+
+    public function restore(User $user, Quotation $quotation): bool
+    {
+        return in_array($user->role, ['super_admin', 'admin']);
+    }
+
+    public function forceDelete(User $user, Quotation $quotation): bool
+    {
+        return in_array($user->role, ['super_admin', 'admin']);
     }
 }
