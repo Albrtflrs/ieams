@@ -13,6 +13,32 @@
     </style>
 </head>
 <body>
+    {{-- Watermark logo --}}
+    @php
+        $logoFullPath = null;
+        if (!empty($logoPath) && Storage::disk('public')->exists($logoPath)) {
+            $logoFullPath = public_path('storage/' . $logoPath);
+        }
+    @endphp
+    @if($logoFullPath)
+        <img src="{{ $logoFullPath }}" 
+            style="position: fixed; 
+            top: 50%; 
+            left: 0; 
+            right: 0; 
+            transform: translateY(-50%); 
+            margin: 0 auto; 
+            opacity: 0.06; 
+            width: 100%; 
+            max-width: 1200px; 
+            height: auto; 
+            max-height: 90%; 
+            z-index: -1; 
+            pointer-events: none; 
+            display: block;" 
+     alt="Logo watermark" />
+    @endif
+
     <h1>Receivables Aging Report</h1>
     <p>As of: {{ $data['asOf'] }}</p>
     <table>

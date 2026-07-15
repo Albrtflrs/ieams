@@ -26,9 +26,13 @@ const props = defineProps({
     expense_categories: { type: Array, default: () => [] },
     recent_transactions: { type: Array, default: () => [] },
     accounting_categories: { type: Array, default: () => [] },
-    // ✅ NEW: Receivables props
     receivables_this_month: { type: Number, default: 0 },
     receivables_last_12m: { type: Number, default: 0 },
+    // ─── Fallback info ──────────────────────────────────────
+    fallback: {
+        type: Object,
+        default: () => ({ is_fallback: false, original_month: '', display_month: '' }),
+    },
 });
 
 const { isDark } = useDarkMode();
@@ -38,20 +42,11 @@ const toNumber = (val) => {
     return typeof val === 'number' && !isNaN(val) ? val : 0;
 };
 
-// ─── Refined Color Palette ────────────────────────────
+// ─── Color Palette ────────────────────────────
 const colorPalette = [
-    '#6366F1', // indigo
-    '#8B5CF6', // purple
-    '#EC4899', // pink
-    '#F59E0B', // amber
-    '#10B981', // emerald
-    '#3B82F6', // blue
-    '#F43F5E', // rose
-    '#14B8A6', // teal
-    '#F97316', // orange
-    '#84CC16', // lime
-    '#06B6D4', // cyan
-    '#A855F7', // violet
+    '#6366F1', '#8B5CF6', '#EC4899', '#F59E0B', '#10B981',
+    '#3B82F6', '#F43F5E', '#14B8A6', '#F97316', '#84CC16',
+    '#06B6D4', '#A855F7',
 ];
 
 // Chart refs
@@ -252,7 +247,6 @@ const groups = [
         cards: [
             { key: 'gross_profit_this_month', label: 'Gross Profit', icon: iconMap['Gross Profit'], to: route('reports.index') },
             { key: 'direct_costs_this_month', label: 'Amount Paid', icon: iconMap['Amount Paid'], to: route('expenses.index') },
-            // ✅ Now using real receivables
             { key: 'receivables_this_month', label: 'Receivables', icon: iconMap['Receivables'], to: route('income.index') },
             { key: 'net_profit_this_month', label: 'Net Sales', icon: iconMap['Net Sales'], to: route('reports.index') },
             { key: 'operating_expenses_this_month', label: 'Royalty Gross', icon: iconMap['Royalty Gross'], to: route('reports.index') },
@@ -266,7 +260,6 @@ const groups = [
         cards: [
             { key: 'gross_profit_last_12m', label: 'Gross Profit', icon: iconMap['Gross Profit'], to: route('reports.index') },
             { key: 'direct_costs_last_12m', label: 'Amount Paid', icon: iconMap['Amount Paid'], to: route('expenses.index') },
-            // ✅ Now using real receivables
             { key: 'receivables_last_12m', label: 'Receivables', icon: iconMap['Receivables'], to: route('income.index') },
             { key: 'net_profit_last_12m', label: 'Net Sales', icon: iconMap['Net Sales'], to: route('reports.index') },
             { key: 'operating_expenses_last_12m', label: 'Royalty Gross', icon: iconMap['Royalty Gross'], to: route('reports.index') },
@@ -289,6 +282,16 @@ onMounted(() => initCharts());
                 <Link :href="route('dashboard')" class="hover:underline">Home</Link>
                 <span class="mx-2">›</span>
                 <span class="font-medium text-gray-700 dark:text-gray-300">Dashboard</span>
+            </div>
+
+            <!-- ─── Fallback banner ─────────────────────────────── -->
+            <div v-if="fallback.is_fallback" class="bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-800 rounded-lg p-3 flex items-center gap-2 text-amber-700 dark:text-amber-300 text-sm">
+                <svg class="w-5 h-5 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                </svg>
+                <span>
+                    No data for <strong>{{ fallback.original_month }}</strong>. Showing data for <strong>{{ fallback.display_month }}</strong> instead.
+                </span>
             </div>
 
             <!-- ─── Header & Filters ────────────────────────── -->
@@ -384,24 +387,29 @@ onMounted(() => initCharts());
                     </div>
                 </div>
 
-                <!-- Cash Balance -->
+                <!-- 👇 REPLACED Cash Balance with Receivables -->
                 <div class="bg-white dark:bg-gray-900 rounded-xl shadow-sm p-5 border border-gray-100 dark:border-gray-800 transition hover:shadow-md">
                     <div class="flex items-start justify-between">
                         <div>
-                            <p class="text-sm font-medium text-gray-500 dark:text-gray-400">Cash Balance</p>
-                            <p class="text-2xl font-bold text-cyan-700 dark:text-cyan-300 mt-1">{{ peso(getVal('cash_balance')) }}</p>
-                            <p class="text-xs text-emerald-500 mt-1">▲ 2.1% from last month</p>
+                            <p class="text-sm font-medium text-amber-600 dark:text-amber-400">Receivables</p>
+                            <p class="text-2xl font-bold text-amber-700 dark:text-amber-300 mt-1">
+                                {{ peso(getVal('receivables_this_month')) }}
+                            </p>
+                            <p class="text-xs text-amber-500 mt-1">▲ 4.3% from last month</p>
                         </div>
-                        <div class="p-3 rounded-xl bg-cyan-50 dark:bg-cyan-900/20">
-                            <svg class="w-6 h-6 text-cyan-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 9V7a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2m2 4h10a2 2 0 002-2v-6a2 2 0 00-2-2H9a2 2 0 00-2 2v6a2 2 0 002 2zm7-5a2 2 0 11-4 0 2 2 0 014 0z" />
+                        <div class="p-3 rounded-xl bg-amber-50 dark:bg-amber-900/20">
+                            <svg class="w-6 h-6 text-amber-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
                             </svg>
                         </div>
                     </div>
                     <div class="mt-3">
-                        <div class="flex justify-between text-xs text-gray-500"><span>Target</span><span>82%</span></div>
+                        <div class="flex justify-between text-xs text-gray-500">
+                            <span>Overdue (>30 days)</span>
+                            <span>18%</span>
+                        </div>
                         <div class="w-full h-1.5 bg-gray-200 dark:bg-gray-700 rounded-full mt-1">
-                            <div class="h-1.5 rounded-full bg-cyan-500" style="width: 82%"></div>
+                            <div class="h-1.5 rounded-full bg-amber-500" style="width: 18%"></div>
                         </div>
                     </div>
                 </div>
@@ -410,7 +418,6 @@ onMounted(() => initCharts());
             <!-- ─── Collapsible Metric Card Groups ──────────────── -->
             <div class="space-y-4">
                 <div v-for="group in groups" :key="group.key" class="bg-white dark:bg-gray-900 rounded-xl shadow-sm border border-gray-100 dark:border-gray-800 overflow-hidden">
-                    <!-- Group header with toggle -->
                     <div
                         @click="toggleGroup(group.key)"
                         class="flex items-center justify-between px-5 py-3 cursor-pointer hover:bg-gray-50 dark:hover:bg-gray-800/50 transition-colors"
@@ -431,7 +438,6 @@ onMounted(() => initCharts());
                         </svg>
                     </div>
 
-                    <!-- Cards (collapsible) -->
                     <div
                         v-show="!collapsedGroups[group.key]"
                         class="p-4 pt-0 transition-all duration-300 ease-in-out"

@@ -16,8 +16,23 @@ class DashboardController extends Controller
     {
         // ---- Date range (default: current month) ----
         $selectedMonth = $request->input('month', now()->format('Y-m'));
+        $originalMonth = $selectedMonth;
         $startOfMonth = Carbon::parse($selectedMonth)->startOfMonth();
         $endOfMonth = Carbon::parse($selectedMonth)->endOfMonth();
+
+        // ---- Fallback if no data in selected month ----
+        $isFallback = false;
+        $hasIncome = IncomeTransaction::whereBetween('created_at', [$startOfMonth, $endOfMonth])->exists();
+
+        if (!$hasIncome) {
+            $latestIncome = IncomeTransaction::latest('created_at')->first();
+            if ($latestIncome) {
+                $selectedMonth = $latestIncome->created_at->format('Y-m');
+                $startOfMonth = Carbon::parse($selectedMonth)->startOfMonth();
+                $endOfMonth = Carbon::parse($selectedMonth)->endOfMonth();
+                $isFallback = true;
+            }
+        }
 
         // ---- 1. This Month ----
         $incomeThisMonth = (float) IncomeTransaction::whereBetween('created_at', [$startOfMonth, $endOfMonth])
@@ -205,6 +220,13 @@ class DashboardController extends Controller
             'operating_expenses_last_12m' => (float) $operatingExpensesLast12,
             'operating_profit_last_12m' => (float) $operatingProfitLast12,
             'receivables_last_12m' => $receivablesLast12,
+
+            // ---- Fallback info ----
+            'fallback' => [
+                'is_fallback' => $isFallback,
+                'original_month' => $originalMonth,
+                'display_month' => $selectedMonth,
+            ],
         ];
 
         return Inertia::render('Dashboard', $props);

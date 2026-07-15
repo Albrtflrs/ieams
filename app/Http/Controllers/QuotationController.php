@@ -377,11 +377,16 @@ class QuotationController extends Controller
         }
     }
 
+    // ─── Updated exportPdf ────────────────
     public function exportPdf(Quotation $quotation)
     {
         $this->authorize('view', $quotation);
         $quotation->load('items');
-        $pdf = Pdf::loadView('pdf.quotation', compact('quotation'));
+        $logoPath = Setting::get('logo_path');
+        $pdf = Pdf::loadView('pdf.quotation', [
+            'quotation' => $quotation,
+            'logoPath'  => $logoPath,
+        ]);
         return $pdf->download('quotation-' . $quotation->quotation_number . '.pdf');
     }
 
@@ -452,7 +457,6 @@ class QuotationController extends Controller
         ]);
     }
 
-    // ─── RESTORE ────────────────────────────────────────────────────────
     public function restore($id)
     {
         $quotation = Quotation::withTrashed()->findOrFail($id);
@@ -461,7 +465,6 @@ class QuotationController extends Controller
         return redirect()->route('quotations.trash')->with('success', 'Quotation restored.');
     }
 
-    // ─── FORCE DELETE ──────────────────────────────────────────────────
     public function forceDelete($id)
     {
         $quotation = Quotation::withTrashed()->findOrFail($id);

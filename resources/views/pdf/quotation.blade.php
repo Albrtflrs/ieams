@@ -15,6 +15,32 @@
     </style>
 </head>
 <body>
+    {{-- Watermark logo --}}
+    @php
+        $logoFullPath = null;
+        if (!empty($logoPath) && Storage::disk('public')->exists($logoPath)) {
+            $logoFullPath = public_path('storage/' . $logoPath);
+        }
+    @endphp
+    @if($logoFullPath)
+        <img src="{{ $logoFullPath }}" 
+             style="position: fixed; 
+            top: 50%; 
+            left: 0; 
+            right: 0; 
+            transform: translateY(-50%); 
+            margin: 0 auto; 
+            opacity: 0.06; 
+            width: 100%; 
+            max-width: 1200px; 
+            height: auto; 
+            max-height: 90%; 
+            z-index: -1; 
+            pointer-events: none; 
+            display: block;" 
+     alt="Logo watermark" />
+    @endif
+
     <div class="header">
         <h1>Quotation #{{ $quotation->quotation_number }}</h1>
         <p><strong>Date Issued:</strong> {{ $quotation->date_issued->format('Y-m-d') }}</p>

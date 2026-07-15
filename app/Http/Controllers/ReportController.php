@@ -7,6 +7,7 @@ use App\Models\ExpenseTransaction;
 use App\Models\MiscellaneousTransaction;
 use App\Models\Client;
 use App\Models\Supplier;
+use App\Models\Setting;
 use Illuminate\Http\Request;
 use Inertia\Inertia;
 use Carbon\Carbon;
@@ -45,38 +46,31 @@ class ReportController extends Controller
         ];
         $callback = function () use ($data) {
             $handle = fopen('php://output', 'w');
-            // Summary
             fputcsv($handle, ['Category', 'Income', 'Expenses', 'Net']);
             fputcsv($handle, ['Total', $data['summary']['total_income'], $data['summary']['total_expenses'], $data['summary']['net_profit']]);
             fputcsv($handle, []);
-            // Income by Category
             fputcsv($handle, ['Income by Category']);
             fputcsv($handle, ['Category', 'Amount']);
             foreach ($data['income_by_category'] as $row) fputcsv($handle, [$row['name'], $row['value']]);
             fputcsv($handle, []);
-            // Expense by Category
             fputcsv($handle, ['Expense by Category']);
             fputcsv($handle, ['Category', 'Amount']);
             foreach ($data['expense_by_category'] as $row) fputcsv($handle, [$row['name'], $row['value']]);
             fputcsv($handle, []);
-            // Monthly Trend
             fputcsv($handle, ['Monthly Trend']);
             fputcsv($handle, ['Month', 'Income', 'Expenses']);
             foreach ($data['months'] as $i => $month) {
                 fputcsv($handle, [$month, $data['income_trend'][$i], $data['expense_trend'][$i]]);
             }
             fputcsv($handle, []);
-            // Top Clients
             fputcsv($handle, ['Top Clients']);
             fputcsv($handle, ['Client', 'Revenue']);
             foreach ($data['top_clients'] as $c) fputcsv($handle, [$c['name'], $c['total']]);
             fputcsv($handle, []);
-            // Top Suppliers
             fputcsv($handle, ['Top Suppliers']);
             fputcsv($handle, ['Supplier', 'Expenses']);
             foreach ($data['top_suppliers'] as $s) fputcsv($handle, [$s['name'], $s['total']]);
             fputcsv($handle, []);
-            // Detailed Transactions
             fputcsv($handle, ['Detailed Transactions']);
             fputcsv($handle, ['Date', 'Client / Supplier', 'Particulars', 'Amount', 'Type']);
             foreach ($data['transactions'] as $tx) {
@@ -90,7 +84,11 @@ class ReportController extends Controller
     public function exportPdf(Request $request)
     {
         $data = $this->getReportData($request);
-        $pdf = Pdf::loadView('reports.pdf', ['data' => $data]);
+        $logoPath = Setting::get('logo_path');
+        $pdf = Pdf::loadView('reports.pdf', [
+            'data' => $data,
+            'logoPath' => $logoPath,
+        ]);
         return $pdf->download('report_' . date('Y-m-d') . '.pdf');
     }
 
@@ -286,9 +284,30 @@ class ReportController extends Controller
 
         $transactions = $incomeTx->concat($expenseTx)->sortByDesc('date')->values()->take(50)->toArray();
 
+        // ---- Build period label ----
+        $periodLabel = '';
+        if ($period == 'this_month') {
+            $periodLabel = Carbon::parse($selectedMonth . '-01')->format('F Y');
+        } elseif ($period == 'last_month') {
+            $periodLabel = Carbon::now()->subMonth()->format('F Y');
+        } elseif ($period == 'this_year') {
+            $periodLabel = 'Year ' . Carbon::now()->format('Y');
+        } elseif ($period == 'last_12_months') {
+            $periodLabel = 'Last 12 Months';
+        } elseif ($period == 'all_time') {
+            $periodLabel = 'All Time';
+        } else {
+            if ($dateFrom && $dateTo) {
+                $periodLabel = $dateFrom->format('M d, Y') . ' - ' . $dateTo->format('M d, Y');
+            } else {
+                $periodLabel = 'Custom Range';
+            }
+        }
+
         return [
             'period' => $period,
             'month' => $selectedMonth,
+            'period_label' => $periodLabel,
             'filters' => [
                 'client_id' => $clientId,
                 'supplier_id' => $supplierId,
@@ -350,7 +369,11 @@ class ReportController extends Controller
     public function exportAgingPdf(Request $request)
     {
         $data = $this->getAgingData($request);
-        $pdf = Pdf::loadView('reports.aging_pdf', ['data' => $data]);
+        $logoPath = Setting::get('logo_path');
+        $pdf = Pdf::loadView('reports.aging_pdf', [
+            'data' => $data,
+            'logoPath' => $logoPath,
+        ]);
         return $pdf->download('aging_report_' . date('Y-m-d') . '.pdf');
     }
 
@@ -450,7 +473,11 @@ class ReportController extends Controller
     public function exportPayablesPdf(Request $request)
     {
         $data = $this->getPayablesAgingData($request);
-        $pdf = Pdf::loadView('reports.payables_aging_pdf', ['data' => $data]);
+        $logoPath = Setting::get('logo_path');
+        $pdf = Pdf::loadView('reports.payables_aging_pdf', [
+            'data' => $data,
+            'logoPath' => $logoPath,
+        ]);
         return $pdf->download('payables_aging_' . date('Y-m-d') . '.pdf');
     }
 
