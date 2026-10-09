@@ -8,7 +8,7 @@ class UserPolicy
 {
     public function viewAny(User $user): bool
     {
-        return in_array($user->role, ['super_admin', 'admin']);
+        return $user->hasRole(['super_admin', 'admin']);
     }
 
     public function view(User $user, User $model): bool
@@ -23,10 +23,10 @@ class UserPolicy
 
     public function update(User $user, User $model): bool
     {
-        if ($user->role === 'super_admin') {
+        if ($user->hasRole('super_admin')) {
             return true;
         }
-        if ($user->role === 'admin' && $model->role !== 'super_admin') {
+        if ($user->hasRole('admin') && strtolower(trim((string) $model->role)) !== 'super_admin') {
             return true;
         }
         return false;
@@ -34,7 +34,7 @@ class UserPolicy
 
     public function delete(User $user, User $model): bool
     {
-        if ($user->role === 'super_admin' && $user->id !== $model->id) {
+        if ($user->hasRole('super_admin') && $user->id !== $model->id) {
             return true;
         }
         return false;

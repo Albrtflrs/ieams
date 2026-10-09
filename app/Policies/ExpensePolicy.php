@@ -9,25 +9,23 @@ class ExpensePolicy
 {
     public function viewAny(User $user): bool
     {
-        return in_array($user->role, ['super_admin', 'admin', 'manager', 'staff', 'viewer']);
+        return $user->hasRole(['super_admin', 'admin', 'manager', 'staff', 'viewer']);
     }
 
     public function view(User $user, ExpenseTransaction $expense): bool
     {
-        return $this->viewAny($user);
+        return $this->viewAny($user)
+            && (!$user->hasRole(['staff', 'viewer']) || $expense->created_by === $user->id);
     }
 
     public function create(User $user): bool
     {
-        return in_array($user->role, ['super_admin', 'admin', 'manager', 'staff']);
+        return $user->hasRole(['super_admin', 'admin']);
     }
 
     public function update(User $user, ExpenseTransaction $expense): bool
     {
-        if (in_array($user->role, ['super_admin', 'admin', 'manager'])) {
-            return true;
-        }
-        if ($user->role === 'staff' && $user->id === $expense->created_by) {
+        if ($user->hasRole(['super_admin', 'admin'])) {
             return true;
         }
         return false;
@@ -35,22 +33,22 @@ class ExpensePolicy
 
     public function delete(User $user, ExpenseTransaction $expense): bool
     {
-        return in_array($user->role, ['super_admin', 'admin', 'manager']);
+        return $user->hasRole(['super_admin', 'admin']);
     }
 
     // ─── Trash / Restore / Force Delete ──────────────────────────────
     public function viewTrash(User $user): bool
     {
-        return in_array($user->role, ['super_admin', 'admin']);
+        return $user->hasRole(['super_admin', 'admin']);
     }
 
     public function restore(User $user, ExpenseTransaction $expense): bool
     {
-        return in_array($user->role, ['super_admin', 'admin']);
+        return $user->hasRole(['super_admin', 'admin']);
     }
 
     public function forceDelete(User $user, ExpenseTransaction $expense): bool
     {
-        return in_array($user->role, ['super_admin', 'admin']);
+        return $user->hasRole(['super_admin', 'admin']);
     }
 }

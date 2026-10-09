@@ -14,7 +14,7 @@ class CheckRole
         }
 
         // 🔥 Super-admin bypass – always allowed, no matter what
-        if (trim(strtolower(auth()->user()->role)) === 'super_admin') {
+        if (auth()->user()->hasRole('super_admin')) {
             return $next($request);
         }
 
@@ -23,7 +23,7 @@ class CheckRole
             abort(403, 'No roles specified for this route.');
         }
 
-        if (!in_array(auth()->user()->role, $roles)) {
+        if (!auth()->user()->hasRole($roles)) {
             abort(403, 'Unauthorized.');
         }
 

@@ -4,6 +4,19 @@ import { Head, router, Link } from '@inertiajs/vue3';
 import { ref, onMounted, watch, computed, nextTick } from 'vue';
 import Chart from 'chart.js/auto';
 import { useSettings } from '@/composables/useSettings';
+import {
+    TrendingUp,
+    TrendingDown,
+    PieChart,
+    Download,
+    FileSpreadsheet,
+    FileText,
+    Calendar,
+    Users,
+    Building2,
+    Filter,
+    ChevronRight,
+} from 'lucide-vue-next';
 
 const props = defineProps({
     period: String,
@@ -80,8 +93,8 @@ const exportReport = (format) => {
 };
 
 // ─── Chart refs ──────────────────────────────────────
-let incomeBarChart = null;      // Replaces doughnut
-let expenseBarChart = null;    // Replaces doughnut
+let incomeBarChart = null;
+let expenseBarChart = null;
 
 function initCharts() {
     if (incomeBarChart) incomeBarChart.destroy();
@@ -91,17 +104,16 @@ function initCharts() {
     const txtColor = dark ? '#e5e7eb' : '#1f2937';
     const gridColor = dark ? '#374151' : '#e5e7eb';
 
-    // ── Income by Category (Bar) ──
     const ctx1 = document.getElementById('incomeBarChart');
     if (ctx1 && props.income_by_category.length) {
-        const sorted = [...props.income_by_category].sort((a,b) => b.value - a.value);
+        const sorted = [...props.income_by_category].sort((a, b) => b.value - a.value);
         incomeBarChart = new Chart(ctx1, {
             type: 'bar',
             data: {
                 labels: sorted.map(c => c.name),
-                datasets: [{ 
-                    label: 'Income Amount', 
-                    data: sorted.map(c => c.value), 
+                datasets: [{
+                    label: 'Income Amount',
+                    data: sorted.map(c => c.value),
                     backgroundColor: dark ? 'rgba(16,185,129,0.7)' : 'rgba(16,185,129,0.85)',
                     borderColor: '#10b981',
                     borderWidth: 1,
@@ -123,17 +135,16 @@ function initCharts() {
         });
     }
 
-    // ── Expense by Category (Bar) ──
     const ctx2 = document.getElementById('expenseBarChart');
     if (ctx2 && props.expense_by_category.length) {
-        const sorted = [...props.expense_by_category].sort((a,b) => b.value - a.value);
+        const sorted = [...props.expense_by_category].sort((a, b) => b.value - a.value);
         expenseBarChart = new Chart(ctx2, {
             type: 'bar',
             data: {
                 labels: sorted.map(c => c.name),
-                datasets: [{ 
-                    label: 'Expense Amount', 
-                    data: sorted.map(c => c.value), 
+                datasets: [{
+                    label: 'Expense Amount',
+                    data: sorted.map(c => c.value),
                     backgroundColor: dark ? 'rgba(239,68,68,0.7)' : 'rgba(239,68,68,0.85)',
                     borderColor: '#ef4444',
                     borderWidth: 1,
@@ -161,7 +172,7 @@ watch(() => [props.income_by_category, props.expense_by_category], () => {
 }, { deep: true });
 
 onMounted(() => {
-    nextTick(initCharts);
+    nextTick(initCharts());
 });
 </script>
 
@@ -170,13 +181,25 @@ onMounted(() => {
         <Head title="Reports" />
 
         <div class="p-6">
-            <div class="flex justify-between items-center mb-6">
-                <h1 class="text-2xl font-bold">Financial Reports</h1>
-                <div class="flex gap-2">
-                    <Link :href="route('reports.aging')" class="bg-purple-500 hover:bg-purple-600 text-white px-4 py-2 rounded text-sm">
+            <!-- 👇 Breadcrumb (matches Summary page) -->
+            <div class="text-sm text-gray-500 dark:text-gray-400 mb-2">
+                <Link :href="route('dashboard')" class="hover:underline">Dashboard</Link>
+                <span class="mx-2">›</span>
+                <span class="font-medium text-gray-700 dark:text-gray-300">Reports</span>
+            </div>
+
+            <!-- Header -->
+            <div class="flex flex-wrap justify-between items-center gap-4 mb-6">
+                <h1 class="text-2xl font-bold flex items-center gap-2">
+                    Financial Reports
+                </h1>
+                <div class="flex flex-wrap gap-2">
+                    <Link :href="route('reports.aging')" class="inline-flex items-center gap-2 bg-purple-500 hover:bg-purple-600 text-white px-4 py-2 rounded text-sm transition-colors">
+                        <Calendar class="w-4 h-4" />
                         Receivables Aging
                     </Link>
-                    <Link :href="route('reports.payables-aging')" class="bg-orange-500 hover:bg-orange-600 text-white px-4 py-2 rounded text-sm">
+                    <Link :href="route('reports.payables-aging')" class="inline-flex items-center gap-2 bg-orange-500 hover:bg-orange-600 text-white px-4 py-2 rounded text-sm transition-colors">
+                        <Calendar class="w-4 h-4" />
                         Payables Aging
                     </Link>
                 </div>
@@ -185,8 +208,9 @@ onMounted(() => {
             <!-- Filters -->
             <div class="bg-white dark:bg-gray-800 p-4 rounded shadow mb-6 space-y-4">
                 <div class="flex flex-wrap items-center gap-4">
-                    <div>
-                        <label class="text-sm font-medium mr-2">Period:</label>
+                    <div class="flex items-center gap-2">
+                        <Filter class="w-4 h-4 text-muted-foreground" />
+                        <label class="text-sm font-medium">Period:</label>
                         <select v-model="selectedPeriod" class="border rounded px-3 py-1 dark:bg-gray-700">
                             <option value="this_month">This Month</option>
                             <option value="last_month">Last Month</option>
@@ -195,19 +219,21 @@ onMounted(() => {
                             <option value="all_time">All Time</option>
                         </select>
                     </div>
-                    <div v-if="selectedPeriod === 'this_month'">
-                        <label class="text-sm font-medium mr-2">Month:</label>
+                    <div v-if="selectedPeriod === 'this_month'" class="flex items-center gap-2">
+                        <label class="text-sm font-medium">Month:</label>
                         <input type="month" v-model="selectedMonth" class="border rounded px-3 py-1 dark:bg-gray-700" />
                     </div>
-                    <div>
-                        <label class="text-sm font-medium mr-2">Client:</label>
+                    <div class="flex items-center gap-2">
+                        <Users class="w-4 h-4 text-muted-foreground" />
+                        <label class="text-sm font-medium">Client:</label>
                         <select v-model="selectedClient" class="border rounded px-3 py-1 dark:bg-gray-700">
                             <option value="">All</option>
                             <option v-for="c in filterOptions.clients" :key="c.id" :value="c.id">{{ c.name }}</option>
                         </select>
                     </div>
-                    <div>
-                        <label class="text-sm font-medium mr-2">Supplier:</label>
+                    <div class="flex items-center gap-2">
+                        <Building2 class="w-4 h-4 text-muted-foreground" />
+                        <label class="text-sm font-medium">Supplier:</label>
                         <select v-model="selectedSupplier" class="border rounded px-3 py-1 dark:bg-gray-700">
                             <option value="">All</option>
                             <option v-for="s in filterOptions.suppliers" :key="s.id" :value="s.id">{{ s.name }}</option>
@@ -215,34 +241,36 @@ onMounted(() => {
                     </div>
                 </div>
                 <div class="flex flex-wrap items-center gap-4">
-                    <div>
-                        <label class="text-sm font-medium mr-2">Income Category:</label>
+                    <div class="flex items-center gap-2">
+                        <label class="text-sm font-medium">Income Category:</label>
                         <select v-model="selectedIncomeCategory" class="border rounded px-3 py-1 dark:bg-gray-700">
                             <option value="">All</option>
                             <option v-for="cat in filterOptions.incomeCategories" :key="cat" :value="cat">{{ cat }}</option>
                         </select>
                     </div>
-                    <div>
-                        <label class="text-sm font-medium mr-2">Expense Category:</label>
+                    <div class="flex items-center gap-2">
+                        <label class="text-sm font-medium">Expense Category:</label>
                         <select v-model="selectedExpenseCategory" class="border rounded px-3 py-1 dark:bg-gray-700">
                             <option value="">All</option>
                             <option v-for="cat in filterOptions.expenseCategories" :key="cat" :value="cat">{{ cat }}</option>
                         </select>
                     </div>
-                    <div>
-                        <label class="text-sm font-medium mr-2">Date From:</label>
+                    <div class="flex items-center gap-2">
+                        <label class="text-sm font-medium">Date From:</label>
                         <input type="date" v-model="dateFrom" class="border rounded px-3 py-1 dark:bg-gray-700" />
                     </div>
-                    <div>
-                        <label class="text-sm font-medium mr-2">Date To:</label>
+                    <div class="flex items-center gap-2">
+                        <label class="text-sm font-medium">Date To:</label>
                         <input type="date" v-model="dateTo" class="border rounded px-3 py-1 dark:bg-gray-700" />
                     </div>
-                    <button @click="applyFilter" class="bg-blue-500 hover:bg-blue-600 text-white px-4 py-1 rounded">Apply</button>
+                    <button @click="applyFilter" class="bg-blue-500 hover:bg-blue-600 text-white px-4 py-1 rounded transition-colors">Apply</button>
                     <div class="flex items-center gap-2 ml-auto">
-                        <button @click="exportReport('csv')" class="bg-green-500 hover:bg-green-600 text-white px-4 py-1 rounded text-sm">
+                        <button @click="exportReport('csv')" class="inline-flex items-center gap-2 bg-green-500 hover:bg-green-600 text-white px-4 py-1 rounded text-sm transition-colors">
+                            <FileSpreadsheet class="w-4 h-4" />
                             Export CSV
                         </button>
-                        <button @click="exportReport('pdf')" class="bg-red-500 hover:bg-red-600 text-white px-4 py-1 rounded text-sm">
+                        <button @click="exportReport('pdf')" class="inline-flex items-center gap-2 bg-red-500 hover:bg-red-600 text-white px-4 py-1 rounded text-sm transition-colors">
+                            <FileText class="w-4 h-4" />
                             Export PDF
                         </button>
                     </div>
@@ -251,23 +279,38 @@ onMounted(() => {
 
             <!-- Summary Cards -->
             <div class="grid grid-cols-1 sm:grid-cols-3 gap-4 mb-8">
-                <div class="bg-gradient-to-br from-emerald-500 to-teal-600 text-white rounded-lg p-4 shadow">
-                    <p class="text-sm uppercase tracking-wider opacity-80">Total Income</p>
-                    <p class="text-2xl font-bold">{{ peso(summary.total_income) }}</p>
+                <div class="bg-gradient-to-br from-emerald-500 to-teal-600 text-white rounded-lg p-4 shadow flex items-start gap-3">
+                    <div class="p-2 bg-white/20 rounded-full">
+                        <TrendingUp class="w-6 h-6" />
+                    </div>
+                    <div>
+                        <p class="text-sm uppercase tracking-wider opacity-80">Total Income</p>
+                        <p class="text-2xl font-bold">{{ peso(summary.total_income) }}</p>
+                    </div>
                 </div>
-                <div class="bg-gradient-to-br from-rose-500 to-pink-600 text-white rounded-lg p-4 shadow">
-                    <p class="text-sm uppercase tracking-wider opacity-80">Total Expenses</p>
-                    <p class="text-2xl font-bold">{{ peso(summary.total_expenses) }}</p>
+                <div class="bg-gradient-to-br from-rose-500 to-pink-600 text-white rounded-lg p-4 shadow flex items-start gap-3">
+                    <div class="p-2 bg-white/20 rounded-full">
+                        <TrendingDown class="w-6 h-6" />
+                    </div>
+                    <div>
+                        <p class="text-sm uppercase tracking-wider opacity-80">Total Expenses</p>
+                        <p class="text-2xl font-bold">{{ peso(summary.total_expenses) }}</p>
+                    </div>
                 </div>
-                <div class="bg-gradient-to-br from-indigo-500 to-blue-600 text-white rounded-lg p-4 shadow">
-                    <p class="text-sm uppercase tracking-wider opacity-80">Net Profit</p>
-                    <p class="text-2xl font-bold" :class="summary.net_profit < 0 ? 'text-red-200' : 'text-green-200'">
-                        {{ peso(summary.net_profit) }}
-                    </p>
+                <div class="bg-gradient-to-br from-indigo-500 to-blue-600 text-white rounded-lg p-4 shadow flex items-start gap-3">
+                    <div class="p-2 bg-white/20 rounded-full">
+                        <PieChart class="w-6 h-6" />
+                    </div>
+                    <div>
+                        <p class="text-sm uppercase tracking-wider opacity-80">Net Profit</p>
+                        <p class="text-2xl font-bold" :class="summary.net_profit < 0 ? 'text-red-200' : 'text-green-200'">
+                            {{ peso(summary.net_profit) }}
+                        </p>
+                    </div>
                 </div>
             </div>
 
-            <!-- ── Bar Charts (Replaces doughnuts) ── -->
+            <!-- Charts -->
             <div class="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-8">
                 <div class="bg-white dark:bg-gray-800 p-4 rounded shadow">
                     <h2 class="text-lg font-semibold mb-2">Income by Category</h2>
@@ -281,12 +324,13 @@ onMounted(() => {
                 </div>
             </div>
 
-            <!-- ── Monthly Income vs Expenses REMOVED ── -->
-
             <!-- Top Lists -->
             <div class="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-8">
                 <div class="bg-white dark:bg-gray-800 p-4 rounded shadow">
-                    <h2 class="text-lg font-semibold mb-2">Top Clients (by Revenue)</h2>
+                    <h2 class="text-lg font-semibold mb-2 flex items-center gap-2">
+                        <Users class="w-5 h-5 text-primary" />
+                        Top Clients (by Revenue)
+                    </h2>
                     <div v-if="top_clients.length">
                         <div v-for="c in top_clients" :key="c.name" class="flex justify-between border-b py-2">
                             <span>{{ c.name }}</span>
@@ -296,7 +340,10 @@ onMounted(() => {
                     <div v-else class="text-gray-500 py-2">No data.</div>
                 </div>
                 <div class="bg-white dark:bg-gray-800 p-4 rounded shadow">
-                    <h2 class="text-lg font-semibold mb-2">Top Suppliers (by Expense)</h2>
+                    <h2 class="text-lg font-semibold mb-2 flex items-center gap-2">
+                        <Building2 class="w-5 h-5 text-primary" />
+                        Top Suppliers (by Expense)
+                    </h2>
                     <div v-if="top_suppliers.length">
                         <div v-for="s in top_suppliers" :key="s.name" class="flex justify-between border-b py-2">
                             <span>{{ s.name }}</span>
@@ -309,7 +356,10 @@ onMounted(() => {
 
             <!-- Detailed Transactions -->
             <div class="bg-white dark:bg-gray-800 p-4 rounded shadow">
-                <h2 class="text-lg font-semibold mb-2">Recent Transactions</h2>
+                <h2 class="text-lg font-semibold mb-2 flex items-center gap-2">
+                    <FileText class="w-5 h-5 text-primary" />
+                    Recent Transactions
+                </h2>
                 <div class="overflow-x-auto">
                     <table class="min-w-full text-sm">
                         <thead>

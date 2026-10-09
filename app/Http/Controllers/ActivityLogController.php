@@ -10,7 +10,7 @@ class ActivityLogController extends Controller
 {
     public function index()
     {
-        $this->authorize('viewAuditLog');
+        $this->authorize('view-audit-logs');
 
         $perPage = Setting::get('rows_per_page', 20);
 

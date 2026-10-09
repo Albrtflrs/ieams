@@ -1,6 +1,6 @@
 <script setup>
 import AppLayout from '@/Layouts/AppLayout.vue';
-import { useForm, Head, router } from '@inertiajs/vue3';
+import { useForm, Head, router, Link } from '@inertiajs/vue3';
 import { ref } from 'vue';
 
 const props = defineProps({
@@ -18,7 +18,6 @@ const form = useForm({
     enable_registration: props.settings.enable_registration || false,
     date_format: props.settings.date_format || 'Y-m-d',
     rows_per_page: props.settings.rows_per_page || 20,
-    // Categories removed – they are not in the controller
     invoice_prefix: props.settings.invoice_prefix || 'INV-',
     invoice_next_number: props.settings.invoice_next_number || 1,
     backup_path: props.settings.backup_path || '',
@@ -87,22 +86,17 @@ const paymentTerms = ['Due on receipt', 'Net 15', 'Net 30', 'Net 60'];
     <AppLayout>
         <Head title="Settings" />
 
-        <div class="p-6 max-w-5xl mx-auto">
-
-            <!-- Breadcrumb -->
+        <div class="p-6">
+            <!-- Breadcrumb (matches Reports & Profile) -->
             <div class="text-sm text-gray-500 dark:text-gray-400 mb-2">
-                <Link :href="route('dashboard')" class="hover:underline">Home</Link>
+                <Link :href="route('dashboard')" class="hover:underline">Dashboard</Link>
                 <span class="mx-2">›</span>
                 <span class="font-medium text-gray-700 dark:text-gray-300">Settings</span>
             </div>
 
-            <!-- Header -->
-            <div class="flex flex-wrap justify-between items-center mb-4">
-                <h1 class="text-2xl font-bold text-gray-800 dark:text-white">Settings</h1>
-                <span class="text-xs text-gray-500">Configure your application preferences</span>
-            </div>
+            <h1 class="text-2xl font-bold mb-6">Settings</h1>
 
-            <form @submit.prevent="submit" class="bg-white dark:bg-gray-800 rounded-xl shadow p-6 space-y-6">
+            <form @submit.prevent="submit" class="bg-white dark:bg-gray-800 rounded-xl shadow p-6 space-y-6 max-w-4xl">
 
                 <!-- ─── General ────────────────────────────────────────── -->
                 <div>
@@ -208,8 +202,6 @@ const paymentTerms = ['Due on receipt', 'Net 15', 'Net 30', 'Net 60'];
                         </div>
                     </div>
                 </div>
-
-                <!-- ─── Default Categories – REMOVED ──────────────────── -->
 
                 <!-- ─── Invoice Numbering ──────────────────────────────── -->
                 <div>

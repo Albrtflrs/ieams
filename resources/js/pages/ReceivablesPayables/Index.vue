@@ -124,10 +124,12 @@ const payableAgingSafe = computed(() => props.payableAging || { '0_30': 0, '31_6
     <AppLayout>
         <div class="p-4 md:p-6">
 
-            <!-- Breadcrumb -->
+            <!-- Breadcrumb with icon -->
             <div class="text-sm text-gray-500 dark:text-gray-400 mb-2">
                 <Link :href="route('dashboard')" class="hover:underline">Home</Link>
-                <span class="mx-2">›</span>
+                <svg class="w-4 h-4 inline mx-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7" />
+                </svg>
                 <span class="font-medium text-gray-700 dark:text-gray-300">Receivables &amp; Payables</span>
             </div>
 
@@ -138,11 +140,19 @@ const payableAgingSafe = computed(() => props.payableAging || { '0_30': 0, '31_6
                     <p class="text-xs text-gray-500 dark:text-gray-400">Track what customers owe you and what you owe suppliers</p>
                 </div>
                 <div class="flex gap-2">
-                    <Link :href="route('reports.aging')" class="bg-purple-500 hover:bg-purple-600 text-white px-3 py-1.5 rounded text-sm transition">
-                        📋 Receivables Aging
+                    <!-- Receivables Aging link with icon -->
+                    <Link :href="route('reports.aging')" class="bg-purple-500 hover:bg-purple-600 text-white px-3 py-1.5 rounded text-sm transition flex items-center gap-1">
+                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                        </svg>
+                        Receivables Aging
                     </Link>
-                    <Link :href="route('reports.payables-aging')" class="bg-orange-500 hover:bg-orange-600 text-white px-3 py-1.5 rounded text-sm transition">
-                        📋 Payables Aging
+                    <!-- Payables Aging link with icon -->
+                    <Link :href="route('reports.payables-aging')" class="bg-orange-500 hover:bg-orange-600 text-white px-3 py-1.5 rounded text-sm transition flex items-center gap-1">
+                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                        </svg>
+                        Payables Aging
                     </Link>
                     <button @click="resetFilters" class="bg-gray-300 hover:bg-gray-400 dark:bg-gray-700 dark:hover:bg-gray-600 text-gray-800 dark:text-white px-3 py-1.5 rounded text-sm transition">
                         Reset Filters
@@ -343,9 +353,12 @@ const payableAgingSafe = computed(() => props.payableAging || { '0_30': 0, '31_6
                 </div>
             </div>
 
-            <!-- Footer note -->
-            <div class="mt-4 text-xs text-gray-400 dark:text-gray-500 text-center border-t border-gray-200 dark:border-gray-700 pt-3">
-                💡 Click any row to edit the transaction. Use the Aging Reports links above for detailed reports.
+            <!-- Footer note with lightbulb icon -->
+            <div class="mt-4 text-xs text-gray-400 dark:text-gray-500 text-center border-t border-gray-200 dark:border-gray-700 pt-3 flex items-center justify-center gap-1">
+                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9.663 17h4.673M12 3v1m6.364 1.636l-.707.707M21 12h-1M4 12H3m3.343-5.657l-.707-.707m2.828 9.9a5 5 0 117.072 0l-.548.547A3.374 3.374 0 0014 18.469V19a2 2 0 11-4 0v-.531c0-.895-.356-1.754-.988-2.386l-.548-.547z" />
+                </svg>
+                <span>Click any row to edit the transaction. Use the Aging Reports links above for detailed reports.</span>
             </div>
         </div>
     </AppLayout>

@@ -337,7 +337,7 @@ const deleteItem = (id) => {
             <div class="bg-white dark:bg-gray-800 rounded-lg shadow overflow-hidden">
                 <div class="px-4 py-3 bg-gray-50 dark:bg-gray-700 border-b border-gray-200 dark:border-gray-600 flex justify-between items-center">
                     <h2 class="text-sm font-semibold text-gray-700 dark:text-gray-200 flex items-center gap-2">
-                        📦 Item Catalog
+                         Item Catalog
                     </h2>
                     <span class="text-xs text-gray-500 dark:text-gray-400">{{ items?.length || 0 }} items</span>
                 </div>
@@ -362,12 +362,6 @@ const deleteItem = (id) => {
                                 <td class="px-3 py-1.5">{{ item.default_markup_percentage }}%</td>
                                 <td class="px-3 py-1.5">{{ peso(item.default_selling_price) }}</td>
                                 <td class="px-3 py-1.5">
-                                    <Link
-                                        :href="route('items.edit', item.id)"
-                                        class="text-blue-600 dark:text-blue-400 hover:underline mr-2"
-                                    >
-                                        Edit
-                                    </Link>
                                     <button
                                         v-if="canManageItems"
                                         @click="deleteItem(item.id)"

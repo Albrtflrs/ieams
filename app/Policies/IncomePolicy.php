@@ -11,30 +11,28 @@ class IncomePolicy
     public function viewAny(?User $user): bool
     {
         if (!$user) return false;
-        return in_array($user->role, ['super_admin', 'admin', 'manager', 'staff', 'viewer']);
+        return $user->hasRole(['super_admin', 'admin', 'manager', 'staff', 'viewer']);
     }
 
     // ─── View single ──────────────────────────────────────────
     public function view(?User $user, IncomeTransaction $income): bool
     {
-        return $this->viewAny($user);
+        if (!$this->viewAny($user)) return false;
+        return !$user->hasRole(['staff', 'viewer']) || $income->created_by === $user->id;
     }
 
     // ─── Create ────────────────────────────────────────────────
     public function create(?User $user): bool
     {
         if (!$user) return false;
-        return in_array($user->role, ['super_admin', 'admin', 'manager', 'staff']);
+        return $user->hasRole(['super_admin', 'admin']);
     }
 
     // ─── Update ────────────────────────────────────────────────
     public function update(?User $user, IncomeTransaction $income): bool
     {
         if (!$user) return false;
-        if (in_array($user->role, ['super_admin', 'admin', 'manager'])) {
-            return true;
-        }
-        if ($user->role === 'staff' && $user->id === $income->created_by) {
+        if ($user->hasRole(['super_admin', 'admin'])) {
             return true;
         }
         return false;
@@ -44,27 +42,27 @@ class IncomePolicy
     public function delete(?User $user, IncomeTransaction $income): bool
     {
         if (!$user) return false;
-        return in_array($user->role, ['super_admin', 'admin', 'manager']);
+        return $user->hasRole(['super_admin', 'admin']);
     }
 
     // ─── NEW: View trash ──────────────────────────────────────
     public function viewTrash(?User $user): bool
     {
         if (!$user) return false;
-        return in_array($user->role, ['super_admin', 'admin']);
+        return $user->hasRole(['super_admin', 'admin']);
     }
 
     // ─── NEW: Restore ──────────────────────────────────────────
     public function restore(?User $user, IncomeTransaction $income): bool
     {
         if (!$user) return false;
-        return in_array($user->role, ['super_admin', 'admin']);
+        return $user->hasRole(['super_admin', 'admin']);
     }
 
     // ─── NEW: Force delete (permanent) ────────────────────────
     public function forceDelete(?User $user, IncomeTransaction $income): bool
     {
         if (!$user) return false;
-        return in_array($user->role, ['super_admin', 'admin']);
+        return $user->hasRole(['super_admin', 'admin']);
     }
 }

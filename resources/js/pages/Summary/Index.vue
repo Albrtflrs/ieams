@@ -1,7 +1,7 @@
 <script setup>
 import AppLayout from '@/Layouts/AppLayout.vue';
 import { Head, Link, router } from '@inertiajs/vue3';
-import { ref, watch, computed, nextTick } from 'vue';
+import { ref, watch, computed } from 'vue';
 import { useSettings } from '@/composables/useSettings';
 import DetailModal from '@/Components/DetailModal.vue';
 
@@ -277,17 +277,33 @@ const mainCards = computed(() => [
 ]);
 
 const ratioCards = computed(() => [
-    { label: 'Gross Margin', key: 'gross_margin', suffix: '%', icon: '📈', color: 'from-green-400 to-emerald-500' },
-    { label: 'Operating Margin', key: 'operating_margin', suffix: '%', icon: '📊', color: 'from-blue-400 to-indigo-500' },
-    { label: 'Net Margin', key: 'net_margin', suffix: '%', icon: '🎯', color: 'from-purple-400 to-violet-500' },
+    { 
+        label: 'Gross Margin', 
+        key: 'gross_margin', 
+        suffix: '%', 
+        icon: 'M3 17l6-6 4 4 6-6', // upward trend
+        color: 'from-green-400 to-emerald-500' 
+    },
+    { 
+        label: 'Operating Margin', 
+        key: 'operating_margin', 
+        suffix: '%', 
+        icon: 'M4 6h16M4 12h16M4 18h16', // bar chart
+        color: 'from-blue-400 to-indigo-500' 
+    },
+    { 
+        label: 'Net Margin', 
+        key: 'net_margin', 
+        suffix: '%', 
+        icon: 'M12 2L2 7l10 5 10-5-10-5zM2 17l10 5 10-5M2 12l10 5 10-5', // target
+        color: 'from-purple-400 to-violet-500' 
+    },
 ]);
 
 const getVal = (key) => {
     const v = props.metrics?.[key];
     return typeof v === 'number' ? v : 0;
 };
-
-const iconPath = (d) => d;
 </script>
 
 <template>
@@ -295,16 +311,18 @@ const iconPath = (d) => d;
         <Head title="Financial Summary" />
 
         <div class="p-6">
-            <!-- Breadcrumb -->
+            <!-- Breadcrumb with inline SVG icon -->
             <div class="text-sm text-gray-500 dark:text-gray-400 mb-2">
                 <Link :href="route('dashboard')" class="hover:underline">Dashboard</Link>
-                <span class="mx-2">›</span>
+                <svg class="w-4 h-4 inline mx-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7" />
+                </svg>
                 <span class="font-medium text-gray-700 dark:text-gray-300">Financial Summary</span>
             </div>
 
             <!-- Header -->
             <div class="flex flex-wrap justify-between items-center mb-4">
-                <h1 class="text-2xl font-bold">📊 Financial Summary</h1>
+                <h1 class="text-2xl font-bold">Financial Summary</h1>
                 <div class="flex flex-wrap gap-2">
                     <Link :href="route('dashboard')" class="bg-gray-500 hover:bg-gray-600 text-white px-4 py-2 rounded text-sm">
                         Dashboard
@@ -315,13 +333,17 @@ const iconPath = (d) => d;
                 </div>
             </div>
 
-            <!-- Alerts -->
-            <div v-if="metrics?.net_profit < 0" class="bg-red-100 dark:bg-red-900/30 text-red-700 dark:text-red-300 p-3 rounded-lg mb-4 flex items-center">
-                <span class="text-xl mr-2">⚠️</span>
+            <!-- Alerts with inline SVG icons -->
+            <div v-if="metrics?.net_profit < 0" class="bg-red-100 dark:bg-red-900/30 text-red-700 dark:text-red-300 p-3 rounded-lg mb-4 flex items-center gap-2">
+                <svg class="w-5 h-5 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
+                </svg>
                 <span>Your business is currently operating at a loss ({{ peso(metrics.net_profit) }}). Consider reviewing expenses or increasing revenue.</span>
             </div>
-            <div v-if="metrics?.cash_balance < 0" class="bg-yellow-100 dark:bg-yellow-900/30 text-yellow-700 dark:text-yellow-300 p-3 rounded-lg mb-4 flex items-center">
-                <span class="text-xl mr-2">⚠️</span>
+            <div v-if="metrics?.cash_balance < 0" class="bg-yellow-100 dark:bg-yellow-900/30 text-yellow-700 dark:text-yellow-300 p-3 rounded-lg mb-4 flex items-center gap-2">
+                <svg class="w-5 h-5 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
+                </svg>
                 <span>Your cash balance is negative ({{ peso(metrics.cash_balance) }}). Immediate action required.</span>
             </div>
 
@@ -423,7 +445,9 @@ const iconPath = (d) => d;
                          class="bg-gradient-to-br text-white rounded-xl p-4 shadow-md border border-white/10 transition-all duration-300 hover:scale-105 hover:shadow-xl"
                          :class="ratio.color">
                         <div class="flex justify-between items-center">
-                            <span class="text-2xl">{{ ratio.icon }}</span>
+                            <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" :d="ratio.icon" />
+                            </svg>
                             <span class="text-xs opacity-80 uppercase tracking-wider">{{ ratio.label }}</span>
                         </div>
                         <p class="text-2xl font-bold mt-2">
@@ -437,8 +461,12 @@ const iconPath = (d) => d;
             <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <!-- Top Income Clients -->
                 <div class="bg-white dark:bg-gray-800 p-4 rounded shadow">
-                    <h2 class="text-lg font-semibold mb-3 flex items-center">
-                        <span class="text-emerald-500 mr-2">🏆</span> Top Income Clients
+                    <h2 class="text-lg font-semibold mb-3 flex items-center gap-2">
+                        <!-- Trophy icon -->
+                        <svg class="w-5 h-5 text-emerald-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 3a2 2 0 00-2 2v2a2 2 0 002 2h1v2h2v-2h2v2h2v-2h2v-2h1a2 2 0 002-2V5a2 2 0 00-2-2H5zM3 13a2 2 0 002 2h14a2 2 0 002-2v-2H3v2z" />
+                        </svg>
+                        Top Income Clients
                     </h2>
                     <div v-if="top_income_clients.length" class="space-y-2">
                         <div v-for="client in top_income_clients" :key="client.id"
@@ -454,8 +482,12 @@ const iconPath = (d) => d;
 
                 <!-- Top Expense Clients -->
                 <div class="bg-white dark:bg-gray-800 p-4 rounded shadow">
-                    <h2 class="text-lg font-semibold mb-3 flex items-center">
-                        <span class="text-rose-500 mr-2">📉</span> Top Expense Clients
+                    <h2 class="text-lg font-semibold mb-3 flex items-center gap-2">
+                        <!-- Downward trend icon -->
+                        <svg class="w-5 h-5 text-rose-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 17l6-6 4 4 6-6" />
+                        </svg>
+                        Top Expense Clients
                     </h2>
                     <div v-if="top_expense_clients.length" class="space-y-2">
                         <div v-for="client in top_expense_clients" :key="client.id"

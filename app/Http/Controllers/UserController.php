@@ -42,6 +42,9 @@ class UserController extends Controller
             'password' => 'required|string|min:8|confirmed',
             'role' => 'required|in:super_admin,admin,manager,staff,viewer',
         ]);
+        if (auth()->user()->hasRole('admin') && $validated['role'] === 'super_admin') {
+            abort(403, 'Only a Super Admin can assign the Super Admin role.');
+        }
         $user = User::create([
             'name' => $validated['name'],
             'email' => $validated['email'],
@@ -66,6 +69,9 @@ class UserController extends Controller
             'role' => 'required|in:super_admin,admin,manager,staff,viewer',
             'password' => 'nullable|string|min:8|confirmed',
         ]);
+        if (auth()->user()->hasRole('admin') && $validated['role'] === 'super_admin') {
+            abort(403, 'Only a Super Admin can assign the Super Admin role.');
+        }
         $data = ['name' => $validated['name'], 'email' => $validated['email'], 'role' => $validated['role']];
         if (!empty($validated['password'])) $data['password'] = Hash::make($validated['password']);
         $user->update($data);

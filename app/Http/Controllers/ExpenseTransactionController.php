@@ -18,6 +18,10 @@ class ExpenseTransactionController extends Controller
     // ─── Helper: Apply shared filters to a query builder ──────────────
     private function applyFilters($query, ?Carbon $startDate, ?Carbon $endDate, string $category, string $status, string $search)
     {
+        if (auth()->user()->hasRole(['staff', 'viewer'])) {
+            $query->where('created_by', auth()->id());
+        }
+
         if ($startDate && $endDate) {
             $query->whereBetween('date', [$startDate, $endDate]);
         }

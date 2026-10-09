@@ -9,26 +9,27 @@ class MiscellaneousPolicy
 {
     public function viewAny(User $user): bool
     {
-        return in_array($user->role, ['super_admin', 'admin', 'manager', 'staff', 'viewer']);
+        return $user->hasRole(['super_admin', 'admin', 'manager', 'staff', 'viewer']);
     }
 
     public function view(User $user, MiscellaneousTransaction $misc): bool
     {
-        return $this->viewAny($user);
+        return $this->viewAny($user)
+            && (!$user->hasRole(['staff', 'viewer']) || $misc->created_by === $user->id);
     }
 
     public function create(User $user): bool
     {
-        return in_array($user->role, ['super_admin', 'admin', 'manager', 'staff']);
+        return $user->hasRole(['super_admin', 'admin', 'manager']);
     }
 
     public function update(User $user, MiscellaneousTransaction $misc): bool
     {
-        return in_array($user->role, ['super_admin', 'admin', 'manager']);
+        return $user->hasRole(['super_admin', 'admin', 'manager']);
     }
 
     public function delete(User $user, MiscellaneousTransaction $misc): bool
     {
-        return in_array($user->role, ['super_admin', 'admin', 'manager']);
+        return $user->hasRole(['super_admin', 'admin']);
     }
 }

@@ -17,7 +17,13 @@ class RetainerController extends Controller
 
         $perPage = Setting::get('rows_per_page', 20);
 
-        $retainers = Retainer::with('client')
+        $retainersQuery = Retainer::with('client');
+
+        if (auth()->user()->hasRole(['staff', 'viewer'])) {
+            $retainersQuery->where('created_by', auth()->id());
+        }
+
+        $retainers = $retainersQuery
             ->latest()
             ->paginate($perPage)
             ->through(fn($item) => [

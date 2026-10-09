@@ -24,6 +24,10 @@ class MiscellaneousController extends Controller
 
         $query = MiscellaneousTransaction::query();
 
+        if (auth()->user()->hasRole(['staff', 'viewer'])) {
+            $query->where('created_by', auth()->id());
+        }
+
         if ($type) {
             $query->where('type', $type);
         }
@@ -179,7 +183,7 @@ class MiscellaneousController extends Controller
     // ─── Export CSV ──────────────────────────────
     public function exportCsv(Request $request)
     {
-        $this->authorize('viewAny', MiscellaneousTransaction::class);
+        $this->authorize('export-reports');
 
         // Apply same filters as index
         $query = MiscellaneousTransaction::query();

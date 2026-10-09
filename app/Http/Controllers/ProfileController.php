@@ -33,7 +33,7 @@ class ProfileController extends Controller
             $user->name = $validated['name'];
         }
 
-        if ($request->filled('email') && in_array($user->role, ['super_admin', 'admin'])) {
+        if ($request->filled('email') && $user->hasRole(['super_admin', 'admin'])) {
             $user->email = $validated['email'];
         }
 
@@ -61,4 +61,15 @@ class ProfileController extends Controller
 
         return redirect()->route('profile.edit')->with('success', 'Profile updated.');
     }
+
+    public function showAvatar($filename)
+{
+    $path = 'profile_photos/' . $filename;
+
+    if (!Storage::disk('public')->exists($path)) {
+        abort(404);
+    }
+
+    return Storage::disk('public')->response($path);
+}
 }

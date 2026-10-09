@@ -11,7 +11,7 @@ class ItemController extends Controller
     public function store(Request $request)
     {
         // Only admins can add items
-        if (!in_array(auth()->user()->role, ['super_admin', 'admin'])) {
+        if (!auth()->user()->hasRole(['super_admin', 'admin'])) {
             abort(403, 'Unauthorized');
         }
 
@@ -34,7 +34,7 @@ class ItemController extends Controller
     public function destroy(Item $item)
     {
         // Only admins can delete items
-        if (!in_array(auth()->user()->role, ['super_admin', 'admin'])) {
+        if (!auth()->user()->hasRole(['super_admin', 'admin'])) {
             abort(403, 'Unauthorized');
         }
 

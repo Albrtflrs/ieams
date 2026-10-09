@@ -40,16 +40,17 @@ class AuthServiceProvider extends ServiceProvider
 
         // 🔥 Super-admin bypass – case‑insensitive & trimmed
         Gate::before(function ($user) {
-            if (trim(strtolower($user->role)) === 'super_admin') {
+            if ($user->hasRole('super_admin')) {
                 return true;
             }
             return null;
         });
 
         // Optional: define gates for non‑model permissions
-        Gate::define('manage-users', fn($user) => in_array($user->role, ['super_admin', 'admin']));
-        Gate::define('view-audit-logs', fn($user) => $user->role === 'super_admin');
-        Gate::define('configure-settings', fn($user) => $user->role === 'super_admin');
-        Gate::define('delete-any', fn($user) => in_array($user->role, ['super_admin', 'admin', 'manager']));
+        Gate::define('manage-users', fn($user) => $user->hasRole(['super_admin', 'admin']));
+        Gate::define('view-audit-logs', fn($user) => $user->hasRole('super_admin'));
+        Gate::define('configure-settings', fn($user) => $user->hasRole(['super_admin', 'admin']));
+        Gate::define('export-reports', fn($user) => $user->hasRole(['super_admin', 'admin']));
+        Gate::define('delete-any', fn($user) => $user->hasRole(['super_admin', 'admin', 'manager']));
     }
 }

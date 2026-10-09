@@ -37,6 +37,16 @@ class User extends Authenticatable
     
     protected $appends = ['avatar_url'];
 
+    public function normalizedRole(): string
+    {
+        return trim(strtolower((string) $this->role));
+    }
+
+    public function hasRole(string|array $roles): bool
+    {
+        return in_array($this->normalizedRole(), (array) $roles, true);
+    }
+
     public function getAvatarUrlAttribute(): string
     {
         return $this->avatar_path ? Storage::disk('public')->url($this->avatar_path) : '';

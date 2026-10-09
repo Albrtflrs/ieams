@@ -29,10 +29,7 @@ class QuotationController extends Controller
 
         $perPage = Setting::get('rows_per_page', 20);
 
-        $query = Quotation::with(['client', 'creator'])
-            ->when(auth()->user()->role === 'staff' || auth()->user()->role === 'viewer', function ($q) {
-                $q->where('created_by', auth()->id());
-            });
+        $query = Quotation::with(['client', 'creator']);
 
         if ($clientId) {
             $query->where('client_id', $clientId);

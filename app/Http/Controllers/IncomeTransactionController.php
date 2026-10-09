@@ -26,6 +26,10 @@ class IncomeTransactionController extends Controller
     // ─── Helper: Apply shared filters ──────────────────────────────────
     private function applyFilters($query, string $category, string $status, string $search, string $dateFrom, string $dateTo)
     {
+        if (auth()->user()->hasRole(['staff', 'viewer'])) {
+            $query->where('created_by', auth()->id());
+        }
+
         if ($category !== '') {
             $query->where('category', $category);
         }

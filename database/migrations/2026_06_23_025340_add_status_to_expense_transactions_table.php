@@ -8,15 +8,21 @@ return new class extends Migration
 {
     public function up(): void
     {
-        Schema::table('expense_transactions', function (Blueprint $table) {
-            $table->string('status')->default('Unpaid')->after('amount');
-        });
+        // Only add the column if it doesn't already exist
+        if (!Schema::hasColumn('expense_transactions', 'status')) {
+            Schema::table('expense_transactions', function (Blueprint $table) {
+                $table->string('status')->default('Unpaid')->after('amount');
+            });
+        }
     }
 
     public function down(): void
     {
-        Schema::table('expense_transactions', function (Blueprint $table) {
-            $table->dropColumn('status');
-        });
+        // Only drop the column if it exists
+        if (Schema::hasColumn('expense_transactions', 'status')) {
+            Schema::table('expense_transactions', function (Blueprint $table) {
+                $table->dropColumn('status');
+            });
+        }
     }
 };

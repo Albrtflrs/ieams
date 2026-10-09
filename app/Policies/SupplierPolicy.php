@@ -9,7 +9,7 @@ class SupplierPolicy
 {
     public function viewAny(User $user): bool
     {
-        return in_array($user->role, ['super_admin', 'admin', 'manager', 'staff', 'viewer']);
+        return $user->hasRole(['super_admin', 'admin', 'manager', 'staff', 'viewer']);
     }
 
     public function view(User $user, Supplier $supplier): bool
@@ -19,7 +19,7 @@ class SupplierPolicy
 
     public function create(User $user): bool
     {
-        return in_array($user->role, ['super_admin', 'admin', 'manager', 'staff']);
+        return $user->hasRole(['super_admin', 'admin', 'manager']);
     }
 
     public function update(User $user, Supplier $supplier): bool
@@ -29,6 +29,6 @@ class SupplierPolicy
 
     public function delete(User $user, Supplier $supplier): bool
     {
-        return in_array($user->role, ['super_admin', 'admin', 'manager']);
+        return $user->hasRole(['super_admin', 'admin']);
     }
 }

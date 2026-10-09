@@ -7,20 +7,25 @@ const props = defineProps({
     user: Object,
 });
 
+// ✅ Helper to generate the correct route URL and bypass the 403 storage symlink issue
+const getAvatarUrl = (path) => {
+    if (!path) return null;
+    // Extract just the filename (e.g., 'Riuv00...jpg') from 'profile_photos/Riuv00...jpg'
+    const filename = path.split('/').pop();
+    return `/profile/avatar/${filename}`;
+};
+
 const form = useForm({
     name: props.user?.name || '',
     email: props.user?.email || '',
     avatar: null,
 });
 
-const avatarPreview = ref(
-    props.user?.avatar_path ? `/storage/${props.user.avatar_path}` : null
-);
+const avatarPreview = ref(getAvatarUrl(props.user?.avatar_path));
 
 const submit = () => {
     console.log('Submitting form with avatar:', form.avatar);
 
-    // Use POST with _method spoofing (Inertia handles this)
     form.post(route('profile.update'), {
         forceFormData: true,
         onSuccess: () => {
@@ -45,7 +50,8 @@ const resetForm = () => {
     form.name = props.user?.name || '';
     form.email = props.user?.email || '';
     form.avatar = null;
-    avatarPreview.value = props.user?.avatar_path ? `/storage/${props.user.avatar_path}` : null;
+    // ✅ Use the helper here as well
+    avatarPreview.value = getAvatarUrl(props.user?.avatar_path);
     const fileInput = document.getElementById('avatar-input');
     if (fileInput) fileInput.value = '';
     form.errors = {};
@@ -56,9 +62,10 @@ const resetForm = () => {
     <AppLayout>
         <Head title="Profile" />
 
-        <div class="p-6 max-w-2xl mx-auto">
+        <div class="p-6">
+            <!-- Breadcrumb (matches Reports page) -->
             <div class="text-sm text-gray-500 dark:text-gray-400 mb-2">
-                <Link :href="route('dashboard')" class="hover:underline">Home</Link>
+                <Link :href="route('dashboard')" class="hover:underline">Dashboard</Link>
                 <span class="mx-2">›</span>
                 <span class="font-medium text-gray-700 dark:text-gray-300">Profile</span>
             </div>
@@ -74,8 +81,7 @@ const resetForm = () => {
                 </ul>
             </div>
 
-            <form @submit.prevent="submit" class="bg-white dark:bg-gray-800 p-6 rounded-xl shadow space-y-4">
-
+            <form @submit.prevent="submit" class="bg-white dark:bg-gray-800 p-6 rounded-xl shadow space-y-4 max-w-2xl">
                 <!-- Avatar -->
                 <div>
                     <label class="block text-sm font-medium text-gray-700 dark:text-gray-300">Profile Photo</label>

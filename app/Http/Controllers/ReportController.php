@@ -38,6 +38,7 @@ class ReportController extends Controller
 
     public function exportCsv(Request $request)
     {
+        $this->authorize('export-reports');
         $data = $this->getReportData($request);
         $filename = 'report_' . date('Y-m-d') . '.csv';
         $headers = [
@@ -46,6 +47,9 @@ class ReportController extends Controller
         ];
         $callback = function () use ($data) {
             $handle = fopen('php://output', 'w');
+            fputcsv($handle, ['IEAMS Financial Report']);
+            fputcsv($handle, ['Period', $data['period_label'] ?? $data['period']]);
+            fputcsv($handle, []);
             fputcsv($handle, ['Category', 'Income', 'Expenses', 'Net']);
             fputcsv($handle, ['Total', $data['summary']['total_income'], $data['summary']['total_expenses'], $data['summary']['net_profit']]);
             fputcsv($handle, []);
@@ -81,14 +85,23 @@ class ReportController extends Controller
         return response()->stream($callback, 200, $headers);
     }
 
+    // 👇 UPDATED with Snappy options
     public function exportPdf(Request $request)
     {
+        $this->authorize('export-reports');
         $data = $this->getReportData($request);
         $logoPath = Setting::get('logo_path');
+        $baseUrl = url('/');
+
         $pdf = Pdf::loadView('reports.pdf', [
             'data' => $data,
             'logoPath' => $logoPath,
+            'baseUrl' => $baseUrl,
+        ])->setOption([
+            'isHtml5ParserEnabled' => true,
+            'isRemoteEnabled' => true,
         ]);
+
         return $pdf->download('report_' . date('Y-m-d') . '.pdf');
     }
 
@@ -158,20 +171,23 @@ class ReportController extends Controller
         $totalExpenses = $expenseQuery->sum('amount') + $miscExpenseQuery->sum('amount');
         $netProfit = $totalIncome - $totalExpenses;
 
+        // ── Income by Category – FIX for NULL categories ──
         $incomeByCategory = $incomeQuery
-            ->select('category', DB::raw('SUM(amount_paid) as total'))
+            ->select(DB::raw('COALESCE(category, "Uncategorized") as category'), DB::raw('SUM(amount_paid) as total'))
             ->groupBy('category')
             ->get()
-            ->map(fn($item) => ['name' => $item->category, 'value' => $item->total])
+            ->map(fn($item) => ['name' => $item->category, 'value' => (float) $item->total])
             ->toArray();
 
+        // ── Expense by Category – FIX for NULL categories ──
         $expenseByCategory = $expenseQuery
-            ->select('category', DB::raw('SUM(amount) as total'))
+            ->select(DB::raw('COALESCE(category, "Uncategorized") as category'), DB::raw('SUM(amount) as total'))
             ->groupBy('category')
             ->get()
-            ->map(fn($item) => ['name' => $item->category, 'value' => $item->total])
+            ->map(fn($item) => ['name' => $item->category, 'value' => (float) $item->total])
             ->toArray();
 
+        // ── Monthly Trend ──────────────────────────────────
         $trendMonths = [];
         $incomeTrend = [];
         $expenseTrend = [];
@@ -228,6 +244,7 @@ class ReportController extends Controller
             }
         }
 
+        // ── Top Clients ────────────────────────────────────
         $topClientsQuery = Client::withSum(['incomeTransactions' => function($q) use ($startDate, $endDate, $incomeCategory) {
             if ($startDate && $endDate) $q->whereBetween('created_at', [$startDate, $endDate]);
             if ($incomeCategory) $q->where('category', $incomeCategory);
@@ -239,6 +256,7 @@ class ReportController extends Controller
             ->map(fn($c) => ['name' => $c->name, 'total' => $c->income_transactions_sum_amount_paid ?? 0])
             ->toArray();
 
+        // ── Top Suppliers ──────────────────────────────────
         $topSuppliersQuery = Supplier::withSum(['expenseTransactions' => function($q) use ($startDate, $endDate, $expenseCategory) {
             if ($startDate && $endDate) $q->whereBetween('created_at', [$startDate, $endDate]);
             if ($expenseCategory) $q->where('category', $expenseCategory);
@@ -250,6 +268,7 @@ class ReportController extends Controller
             ->map(fn($s) => ['name' => $s->name, 'total' => $s->expense_transactions_sum_amount ?? 0])
             ->toArray();
 
+        // ── Recent Transactions ────────────────────────────
         $incomeTx = IncomeTransaction::with('client')
             ->when($clientId, fn($q) => $q->where('client_id', $clientId))
             ->when($incomeCategory, fn($q) => $q->where('category', $incomeCategory))
@@ -284,7 +303,7 @@ class ReportController extends Controller
 
         $transactions = $incomeTx->concat($expenseTx)->sortByDesc('date')->values()->take(50)->toArray();
 
-        // ---- Build period label ----
+        // ── Period Label ──────────────────────────────────
         $periodLabel = '';
         if ($period == 'this_month') {
             $periodLabel = Carbon::parse($selectedMonth . '-01')->format('F Y');
@@ -304,6 +323,7 @@ class ReportController extends Controller
             }
         }
 
+        // ── Final Return ──────────────────────────────────
         return [
             'period' => $period,
             'month' => $selectedMonth,
@@ -342,6 +362,7 @@ class ReportController extends Controller
 
     public function exportAgingCsv(Request $request)
     {
+        $this->authorize('export-reports');
         $data = $this->getAgingData($request);
         $filename = 'aging_report_' . date('Y-m-d') . '.csv';
         $headers = [
@@ -350,6 +371,9 @@ class ReportController extends Controller
         ];
         $callback = function () use ($data) {
             $handle = fopen('php://output', 'w');
+            fputcsv($handle, ['IEAMS Receivables Aging Report']);
+            fputcsv($handle, ['As of', $data['asOf']]);
+            fputcsv($handle, []);
             fputcsv($handle, ['Client', '0-30 days', '31-60 days', '61-90 days', '90+ days', 'Total Receivable']);
             foreach ($data['agingData'] as $row) {
                 fputcsv($handle, [
@@ -366,14 +390,23 @@ class ReportController extends Controller
         return response()->stream($callback, 200, $headers);
     }
 
+    // 👇 UPDATED with Snappy options
     public function exportAgingPdf(Request $request)
     {
+        $this->authorize('export-reports');
         $data = $this->getAgingData($request);
         $logoPath = Setting::get('logo_path');
+        $baseUrl = url('/');
+
         $pdf = Pdf::loadView('reports.aging_pdf', [
             'data' => $data,
             'logoPath' => $logoPath,
+            'baseUrl' => $baseUrl,
+        ])->setOption([
+            'isHtml5ParserEnabled' => true,
+            'isRemoteEnabled' => true,
         ]);
+
         return $pdf->download('aging_report_' . date('Y-m-d') . '.pdf');
     }
 
@@ -446,6 +479,7 @@ class ReportController extends Controller
 
     public function exportPayablesCsv(Request $request)
     {
+        $this->authorize('export-reports');
         $data = $this->getPayablesAgingData($request);
         $filename = 'payables_aging_' . date('Y-m-d') . '.csv';
         $headers = [
@@ -454,6 +488,9 @@ class ReportController extends Controller
         ];
         $callback = function () use ($data) {
             $handle = fopen('php://output', 'w');
+            fputcsv($handle, ['IEAMS Payables Aging Report']);
+            fputcsv($handle, ['As of', $data['asOf']]);
+            fputcsv($handle, []);
             fputcsv($handle, ['Supplier', '0-30 days', '31-60 days', '61-90 days', '90+ days', 'Total Payable']);
             foreach ($data['agingData'] as $row) {
                 fputcsv($handle, [
@@ -470,14 +507,23 @@ class ReportController extends Controller
         return response()->stream($callback, 200, $headers);
     }
 
+    // 👇 UPDATED with Snappy options
     public function exportPayablesPdf(Request $request)
     {
+        $this->authorize('export-reports');
         $data = $this->getPayablesAgingData($request);
         $logoPath = Setting::get('logo_path');
+        $baseUrl = url('/');
+
         $pdf = Pdf::loadView('reports.payables_aging_pdf', [
             'data' => $data,
             'logoPath' => $logoPath,
+            'baseUrl' => $baseUrl,
+        ])->setOption([
+            'isHtml5ParserEnabled' => true,
+            'isRemoteEnabled' => true,
         ]);
+
         return $pdf->download('payables_aging_' . date('Y-m-d') . '.pdf');
     }
 

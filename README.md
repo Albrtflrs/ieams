@@ -1,296 +1,338 @@
+# IEAMS
 
-**Benefits:**
-- No manual calculations – system auto-calculates.
-- Consistent pricing across all quotes.
-- Accurate profit tracking.
+IEAMS is an internal financial and business management system for recording income, expenses, clients, suppliers, quotations, retainers, miscellaneous transactions, payments, and financial reports.
 
-#### Status Flow
-| Status | When It Applies |
-| :--- | :--- |
-| **Draft** | Quote is being created – not yet sent. |
-| **Sent** | Quote has been emailed or printed for client. |
-| **Accepted** | Client has accepted the quote. |
-| **Rejected** | Client rejected the quote. |
-| **Expired** | Valid until date has passed. |
-| **Converted** | Quote has been converted to Income. |
+## Features
 
-#### Convert to Income Process
-1. Quote must be **Accepted**.
-2. Click **"Convert to Income"**.
-3. System creates an Income Transaction with:
-   - Client = Quote's client
-   - Particulars = "Quotation: QT-XXXX"
-   - Gross Price = Quote's total amount
-   - Status = Unpaid
-4. Quote status changes to **Converted**.
-5. User is taken to the Income Edit page to manage payment.
+### Authentication and Profiles
 
----
+- Login and logout for authenticated users.
+- Optional public registration controlled by Settings.
+- Profile editing for name, email, and avatar.
+- Role-based access control for protected business workflows.
+- Case-insensitive and whitespace-tolerant role checks.
 
-### 9. Reports
+### Dashboard
 
-| Aspect | Description |
-| :--- | :--- |
-| **Purpose** | Comprehensive financial reporting and analysis. |
-| **Business Value** | Understand business performance, prepare financial statements, and export data for external use. |
+- Monthly financial overview.
+- Income, direct costs, operating expenses, gross profit, operating profit, and net profit.
+- Rolling 12-month trends.
+- Expense categories and accounting buckets.
+- Recent income and expense transactions.
+- Month selection with fallback to the most recent income month when the selected month has no income.
 
-#### What It Shows
+### Summary
 
-| Section | What It Does |
-| :--- | :--- |
-| **Summary Cards** | Total Income, Total Expenses, Net Profit. |
-| **Income by Category** | Doughnut chart showing revenue distribution. |
-| **Expense by Category** | Doughnut chart showing expense distribution. |
-| **Monthly Trend** | Line chart showing income vs expenses over time. |
-| **Top Clients** | List of top 5 clients by revenue. |
-| **Top Suppliers** | List of top 5 suppliers by expenses. |
-| **Recent Transactions** | Last 50 transactions with details. |
+- Filterable financial summary by period or custom date range.
+- Total revenue, expenses, net profit, gross profit, operating profit, and cash balance.
+- Receivables calculation.
+- Income and expense category breakdowns.
+- Monthly trends, margins, and top clients or suppliers.
 
-#### Aging Reports
+### Clients
 
-| Report | Purpose |
-| :--- | :--- |
-| **Receivables Aging** | Shows outstanding income by age (0-30, 31-60, 61-90, 90+ days). |
-| **Payables Aging** | Shows outstanding expenses by age (0-30, 31-60, 61-90, 90+ days). |
+- Create, view, edit, search, and delete clients.
+- Store contact person, phone, email, address, and related income history.
+- Client revenue and transaction-count summaries.
+- Client selection in income and quotation workflows.
 
-**Export Options:**
-- **CSV** – For Excel/Google Sheets analysis.
-- **PDF** – For printing or sharing.
+### Suppliers
 
----
+- Create, view, edit, search, and delete suppliers.
+- Store contact person, phone, email, and address.
+- Supplier expense and transaction-count summaries.
+- Supplier selection in expense workflows.
 
-### 10. Receivables & Payables
+### Income Transactions
 
-| Aspect | Description |
-| :--- | :--- |
-| **Purpose** | Dedicated page for managing what customers owe you and what you owe suppliers. |
-| **Business Value** | Never miss a receivable or payable – all outstanding items in one place with aging alerts. |
+- Create, view, edit, and soft-delete income transactions.
+- Record client, category, particulars, delivery date, gross price, deductions, royalty, and amount paid.
+- Track payment status, including unpaid and cash-on-hold records.
+- Mark income as paid.
+- Search and filter by category, status, client, and date range.
+- Automatically generate receipt and invoice numbers.
+- Trash bin, restore, and permanent deletion for authorized administrators.
+- Staff and Viewer accounts can only view their own income records.
 
-#### What It Shows
+### Expense Transactions
 
-| Card | What It Tells You |
-| :--- | :--- |
-| **Total Receivables** | All Unpaid + Cash On Hold income. |
-| **Total Payables** | All Unpaid + Pending expenses. |
-| **Net Position** | Receivables - Payables (your net cash position). |
+- Create, view, edit, and soft-delete expenses.
+- Record supplier, category, description, date, amount, status, and receipt number.
+- Search and filter by category, status, supplier, period, and date range.
+- Automatically generate receipt numbers.
+- Trash bin, restore, and permanent deletion for authorized administrators.
+- Staff and Viewer accounts can only view their own expense records.
 
-#### Aging Buckets (Color-Coded)
-| Bucket | Color | Risk Level |
-| :--- | :--- | :--- |
-| 0-30 Days | 🟢 Green | Low risk |
-| 31-60 Days | 🟡 Yellow | Medium risk |
-| 61-90 Days | 🟠 Orange | High risk |
-| 90+ Days | 🔴 Red | Critical risk |
+### Miscellaneous Transactions
 
-#### Tables
-| Table | What It Shows |
-| :--- | :--- |
-| **Unpaid Invoices** | All income with status = Unpaid or Cash On Hold. |
-| **Unpaid Expenses** | All expenses with status = Unpaid or Pending. |
+- Record miscellaneous income and expenses outside the primary workflows.
+- Store date, amount, category, description, and reference number.
+- Automatic miscellaneous reference numbering.
+- Search and filter by type, category, text, and date range.
+- Summary of miscellaneous income, expenses, net amount, and count.
+- CSV export for Super Admin and Admin users.
+- Staff and Viewer accounts can only view their own miscellaneous records.
 
-**Action:** Click **"Edit"** on any row to mark it as Paid or update details.
+### Item Catalog
 
----
+- Admin and Super Admin users can add and delete quotation items.
+- Store item name, description, cost price, markup percentage, selling price, and category.
+- Items can be selected when preparing quotations.
 
-### 11. Users
+### Quotations
 
-| Aspect | Description |
-| :--- | :--- |
-| **Purpose** | Manage who can access the system and what they can do. |
-| **Business Value** | Ensure data security, prevent unauthorized changes, and delegate responsibilities appropriately. |
+- Create, view, edit, and delete quotations.
+- Add multiple quotation items with quantity, cost, markup, selling price, and totals.
+- Automatic quotation numbering and total calculations.
+- Client selection and quotation validity dates.
+- Status workflow: Draft, Sent, Accepted, Rejected, Expired, and Converted.
+- Export individual quotations to PDF or CSV.
+- Convert an accepted quotation into an income transaction.
+- Prevent conversion when the quotation is not accepted or was already converted.
+- Trash bin, restore, and permanent deletion for authorized administrators.
+- Only Super Admin, Admin, and Manager users can access quotations.
 
-#### Roles & What They Can Do
+### Retainers
 
-| Role | Permissions |
-| :--- | :--- |
-| **Super Admin** | Full system access. Can create/delete users, manage settings, view all data. |
-| **Admin** | Full access except user management (can't delete Super Admin). |
-| **Manager** | Can view all data, create/edit income/expenses, view reports. Can create quotations. Cannot delete. |
-| **Staff** | Can view own data, create quotations (using existing items only). Cannot delete or manage users. |
-| **Viewer** | View-only access to own data. |
+- Create, view, edit, and delete retainers.
+- Track client, reference number, total amount, used amount, remaining balance, status, dates, billing frequency, payment terms, and renewal settings.
+- Support allocated hours, overage rates, rollover, SLA tier, services, and contract files.
+- Automatic retainer numbering.
+- Trash bin, restore, and permanent deletion for authorized administrators.
+- Staff and Viewer accounts can only view their own retainers.
 
-#### Business Value
-- **Super Admin** – Maintains system integrity.
-- **Admin** – Handles day-to-day operations.
-- **Manager** – Oversees teams without full admin access.
-- **Staff** – Inputs data but can't modify critical settings.
-- **Viewer** – External stakeholders who need to see financials only.
+### Reports
 
----
+- Financial report dashboard with configurable periods and date ranges.
+- Total income, expenses, and net profit.
+- Income and expense breakdowns by category.
+- Monthly income and expense trends.
+- Top clients by revenue.
+- Top suppliers by expenses.
+- Recent transaction details.
+- Receivables aging with 0-30, 31-60, 61-90, and 90+ day buckets.
+- Payables aging with the same buckets.
+- CSV and PDF export for Super Admin and Admin users.
 
-### 12. Settings
+### Receivables and Payables
 
-| Aspect | Description |
-| :--- | :--- |
-| **Purpose** | Configure the system to match your business needs. |
-| **Business Value** | Tailor the system without touching code. |
+- Dedicated view of outstanding customer receivables and supplier payables.
+- Net position calculation.
+- Unpaid income and pending or unpaid expenses.
+- Aging information for collection and payment follow-up.
 
-#### Settings Groups
+### User Management
 
-| Group | What You Can Configure |
-| :--- | :--- |
-| **General** | Company Name, Address, Tax ID. |
-| **Branding** | Upload Logo (custom branding on reports and quotes). |
-| **Financial** | Currency Symbol, Fiscal Year Start, Default Royalty Rate, Default Payment Terms. |
-| **Default Categories** | Income Categories, Expense Categories, Miscellaneous Categories. |
-| **Invoice Numbering** | Invoice Prefix, Next Invoice Number. |
-| **Backup** | Backup Path, Enable Monthly Backup, Run Backup Now. |
-| **IP Whitelist** | Restrict access to specific IPs (security). |
-| **Appearance** | Date Format, Rows per Page, Enable Public Registration. |
+- Super Admin and Admin users can access user management.
+- Create users with the roles Super Admin, Admin, Manager, Staff, or Viewer.
+- Edit permitted user accounts and reset passwords.
+- Super Admin can delete other user accounts.
+- Admin cannot edit or delete a Super Admin.
+- Only Super Admin can assign the Super Admin role.
+- Users cannot delete their own account.
 
-#### Business Value
-- **Customize branding** – Make the system look like your company.
-- **Defaults** – Reduce data entry errors with pre-filled values.
-- **Security** – IP whitelist adds an extra layer of security.
-- **Backup** – Never lose data with automated backups.
+### Settings
 
----
+Super Admin and Admin users can configure:
 
-## 👥 User Roles & Permissions
+- Company name, address, and tax ID.
+- Currency symbol and fiscal year start.
+- Default royalty rate and payment terms.
+- Income, expense, and miscellaneous categories.
+- Invoice, receipt, quotation, and retainer numbering.
+- Logo and report branding.
+- Database backup path and monthly backup option.
+- Allowed IP addresses or wildcard IP ranges.
+- Date format and rows per page.
+- Public registration.
+- Automatic conversion of accepted quotations, where enabled.
+
+### Database Backups
+
+- Download a database backup from Settings.
+- Scheduled backup command support is included in the application.
+- Backup location is configurable through Settings.
+
+### Audit Logging
+
+- Activity logging is enabled for tracked models.
+- Super Admin users can view the audit log.
+- Logs include event, description, subject, acting user, timestamps, and changed values.
+
+## Role-Based Access Control
+
+The application uses Laravel policies, Gates, route middleware, and controller checks. Super Admin has a global authorization bypass.
 
 | Permission | Super Admin | Admin | Manager | Staff | Viewer |
-| :--- | :--- | :--- | :--- | :--- | :--- |
-| **Dashboard** | ✅ | ✅ | ✅ | ✅ | ✅ |
-| **Summary** | ✅ | ✅ | ✅ | ✅ | ✅ |
-| **Income** | ✅ | ✅ | ✅ | ✅ | ✅ |
-| **Create/Edit Income** | ✅ | ✅ | ❌ | ❌ | ❌ |
-| **Delete Income** | ✅ | ✅ | ❌ | ❌ | ❌ |
-| **Expenses** | ✅ | ✅ | ✅ | ✅ | ✅ |
-| **Create/Edit Expenses** | ✅ | ✅ | ❌ | ❌ | ❌ |
-| **Delete Expenses** | ✅ | ✅ | ❌ | ❌ | ❌ |
-| **Clients** | ✅ | ✅ | ✅ | ✅ | ✅ |
-| **Create/Edit Clients** | ✅ | ✅ | ✅ | ❌ | ❌ |
-| **Delete Clients** | ✅ | ✅ | ❌ | ❌ | ❌ |
-| **Suppliers** | ✅ | ✅ | ✅ | ✅ | ✅ |
-| **Create/Edit Suppliers** | ✅ | ✅ | ✅ | ❌ | ❌ |
-| **Delete Suppliers** | ✅ | ✅ | ❌ | ❌ | ❌ |
-| **Retainers** | ✅ | ✅ | ✅ | ❌ | ❌ |
-| **Create/Edit Retainers** | ✅ | ✅ | ✅ | ❌ | ❌ |
-| **Delete Retainers** | ✅ | ✅ | ❌ | ❌ | ❌ |
-| **Quotations** | ✅ | ✅ | ✅ | ❌ | ❌ |
-| **Create/Edit Quotations** | ✅ | ✅ | ✅ | ❌ | ❌ |
-| **Delete Quotations** | ✅ | ✅ | ❌ | ❌ | ❌ |
-| **Convert to Income** | ✅ | ✅ | ✅ | ❌ | ❌ |
-| **Reports** | ✅ | ✅ | ✅ | ✅ | ✅ |
-| **Export Reports** | ✅ | ✅ | ❌ | ❌ | ❌ |
-| **Receivables/Payables** | ✅ | ✅ | ✅ | ✅ | ✅ |
-| **Users Management** | ✅ | ✅ | ❌ | ❌ | ❌ |
-| **Settings** | ✅ | ❌ | ❌ | ❌ | ❌ |
+| --- | --- | --- | --- | --- | --- |
+| Dashboard | Yes | Yes | Yes | Yes | Yes |
+| Summary | Yes | Yes | Yes | Yes | Yes |
+| View clients and suppliers | All | All | All | All | All |
+| Create/edit clients and suppliers | Yes | Yes | Yes | No | No |
+| Delete clients and suppliers | Yes | Yes | No | No | No |
+| View income and expenses | All | All | All | Own records | Own records |
+| Create/edit income and expenses | Yes | Yes | No | No | No |
+| Delete income and expenses | Yes | Yes | No | No | No |
+| View miscellaneous transactions | All | All | All | Own records | Own records |
+| Create/edit miscellaneous transactions | Yes | Yes | Yes | No | No |
+| Delete miscellaneous transactions | Yes | Yes | No | No | No |
+| View retainers | All | All | All | Own records | Own records |
+| Create/edit retainers | Yes | Yes | Yes | No | No |
+| Delete retainers | Yes | Yes | No | No | No |
+| Quotations | Yes | Yes | Yes | No | No |
+| Convert quotation to income | Yes | Yes | Yes | No | No |
+| Manage item catalog | Yes | Yes | No | No | No |
+| View reports | Yes | Yes | Yes | Yes | Yes |
+| Export reports | Yes | Yes | No | No | No |
+| View receivables/payables | Yes | Yes | Yes | Yes | Yes |
+| Manage users | Yes | Yes, with limits | No | No | No |
+| Configure settings | Yes | Yes | No | No | No |
+| View audit log | Yes | No | No | No | No |
 
----
+## Technology Stack
 
-## 🛠️ Technology Stack
+| Layer | Technology |
+| --- | --- |
+| Backend | Laravel 12, PHP 8.2+ |
+| Frontend | Vue 3, Inertia.js |
+| Styling | Tailwind CSS |
+| Database | MySQL/MariaDB in production; SQLite is configured for tests |
+| Charts | Chart.js |
+| PDF | DomPDF and Snappy/wkhtmltopdf |
+| Routing helpers | Ziggy |
+| Image handling | Intervention Image |
+| Activity logs | Spatie Laravel Activitylog |
+| Build tool | Vite |
 
-| Layer | Technology | Version |
-| :--- | :--- | :--- |
-| **Backend Framework** | Laravel | 12.x |
-| **Frontend Framework** | Vue 3 | 3.4+ |
-| **Routing** | Inertia.js | 1.0+ |
-| **Styling** | Tailwind CSS | 3.4+ |
-| **Database** | MySQL / MariaDB | 8.0+ / 10.4+ |
-| **Charts** | Chart.js | 4.4+ |
-| **PDF Generation** | DomPDF | 3.0+ |
-| **PHP** | PHP | 8.2+ |
-| **Node.js** | Node | 18+ |
+## Requirements
 
----
+- PHP 8.2 or newer
+- Composer 2
+- Node.js 18 or newer
+- npm 9 or newer
+- MySQL 8/MariaDB 10.4 or newer for production
+- wkhtmltopdf for Snappy PDF exports on supported environments
 
-## 🚀 Installation Guide
-
-### Prerequisites
-- **PHP** 8.2 or higher
-- **Composer** 2.x
-- **Node.js** 18+ and **npm** 9+
-- **MySQL** 8.0+ or **MariaDB** 10.4+
-- **Web Server** (Apache / Nginx) or use Laravel's built-in server
-
-### Step 1: Clone the Repository
+## Installation
 
 ```bash
-git clone https://github.com/yourusername/ieams.git
+git clone <repository-url>
 cd ieams
-
-Step 2: Install PHP Dependencies
-bash
 composer install
-Step 3: Set Up Environment
-bash
-cp .env.example .env
+copy .env.example .env
 php artisan key:generate
-Step 4: Configure Database
-Edit .env file:
+```
 
-env
+Configure the database and application values in `.env`, then run:
+
+```bash
+php artisan migrate --seed
+npm install
+npm run build
+php artisan storage:link
+php artisan serve
+```
+
+Open `http://127.0.0.1:8000` or the URL configured by `APP_URL`.
+
+For local development with Vite and the Laravel server:
+
+```bash
+composer run dev
+```
+
+## Environment Variables
+
+Important variables include:
+
+```dotenv
+APP_NAME=IEAMS
+APP_ENV=local
+APP_DEBUG=true
+APP_URL=http://127.0.0.1:8000
+
 DB_CONNECTION=mysql
 DB_HOST=127.0.0.1
 DB_PORT=3306
 DB_DATABASE=ieams
 DB_USERNAME=root
-DB_PASSWORD=your_password_here
-Step 5: Install Frontend Dependencies
-bash
-npm install
-Step 6: Run Migrations & Seeders
-bash
-php artisan migrate --seed
-Step 7: Generate Ziggy Routes (for frontend routing)
-bash
-php artisan ziggy:generate
-Step 8: Build Frontend Assets
-bash
-npm run build  # For production
-# OR
-npm run dev    # For development (with hot reload)
-Step 9: Start the Application
-bash
-php artisan serve
-Step 10: Access the Application
-URL: http://localhost:8000
+DB_PASSWORD=
 
-Default Super Admin Credentials: (check your seeder)
+SESSION_DRIVER=file
+SESSION_SECURE_COOKIE=false
+```
 
-🔧 Environment Configuration
-Key .env Settings
-Variable	Purpose	Example
-APP_NAME	Application name shown in browser tab	"IEAMS"
-APP_ENV	Environment mode (local/production)	"local"
-APP_DEBUG	Show/hide debug errors	"true" (local), "false" (prod)
-APP_URL	Application base URL	"http://localhost:8000"
-DB_HOST	Database server address	"127.0.0.1"
-DB_PORT	Database port	"3306"
-DB_DATABASE	Database name	"ieams"
-DB_USERNAME	Database username	"root"
-DB_PASSWORD	Database password	""
-SESSION_DOMAIN	Session cookie domain (for subdomains)	".localhost"
-SESSION_SECURE_COOKIE	HTTPS only (production)	"true" in prod
-🐛 Troubleshooting
-Error: Table 'ieams.expense_transactions' doesn't exist
-Fix: Run php artisan migrate
+Set `APP_DEBUG=false`, use HTTPS, configure a secure database account, and review the allowed IP list before production deployment.
 
-Error: Class 'App\Providers\AppServiceProvider' not found
-Fix: Run composer dump-autoload
+## Testing and Quality Checks
 
-Error: Page not found: ./Pages/Quotations/Index.vue
-Fix: Ensure all Vue pages exist in resources/js/Pages/ and restart npm run dev
+Run the backend test suite:
 
-Error: Ziggy route 'receivables-payables.index' not in route list
-Fix: Run php artisan route:clear && php artisan ziggy:generate
+```bash
+php artisan test
+```
 
-Error: 500 Internal Server Error
-Check: Laravel logs in storage/logs/laravel.log
+Build the frontend:
 
-Common fixes: Clear cache (php artisan optimize:clear), check .env database credentials.
+```bash
+npm run build
+```
 
-Error: Vite development server not running
-Fix: Run npm run dev in a separate terminal.
+Run PHP formatting checks:
 
-📄 License
-Proprietary & Confidential
-Unauthorized copying, distribution, modification, or use of this software is strictly prohibited. This system is licensed to the client for internal use only.
+```bash
+vendor/bin/pint --test
+```
 
-📞 Support
-Email: daboy.itexpert@gmail.com
+The test environment uses an in-memory SQLite database and refreshes migrations between tests.
 
-Internal: Open an issue in the development tracker.
+## Important Routes
 
-This README is now **comprehensive, detailed, and explains the purpose behind every feature** – making it clear why each module exists and how it adds business value. 🚀
+| Area | Route |
+| --- | --- |
+| Login | `/login` |
+| Dashboard | `/dashboard` |
+| Summary | `/summary` |
+| Clients | `/clients` |
+| Suppliers | `/suppliers` |
+| Income | `/income` |
+| Expenses | `/expenses` |
+| Miscellaneous | `/misc` |
+| Quotations | `/quotations` |
+| Retainers | `/retainers` |
+| Reports | `/reports` |
+| Receivables/payables | `/receivables-payables` |
+| Users | `/users` |
+| Settings | `/settings` |
+| Profile | `/profile` |
+| Audit log | `/admin/audit-log` |
+
+## Troubleshooting
+
+Clear application caches after changing configuration, routes, or authorization:
+
+```bash
+php artisan optimize:clear
+php artisan route:clear
+php artisan config:clear
+```
+
+If a database table is missing:
+
+```bash
+php artisan migrate
+```
+
+If the frontend is not updating, start Vite with:
+
+```bash
+npm run dev
+```
+
+Check `storage/logs/laravel.log` for server-side errors and confirm that the configured database credentials are valid.
+
+## License and Support
+
+This is proprietary software for internal client use. Unauthorized copying, distribution, or modification is prohibited.
+
+For support, contact the project maintainer or use the internal development tracker.

@@ -15,7 +15,7 @@
 <body>
     {{-- Watermark logo (fixed position) --}}
     @php
-        $logoFullPath = null;
+        $logoFullPath = public_path('images/logob.jpg');
         if (!empty($logoPath) && Storage::disk('public')->exists($logoPath)) {
             $logoFullPath = public_path('storage/' . $logoPath);
         }
@@ -30,15 +30,16 @@
             margin: 0 auto; 
             opacity: 0.06; 
             width: 100%; 
-            max-width: 1200px; 
+            max-width: 900px;
             height: auto; 
             max-height: 90%; 
-            z-index: -1; 
+            z-index: 0;
             pointer-events: none; 
             display: block;" 
      alt="Logo watermark" />
     @endif
 
+    <div style="position: relative; z-index: 1;">
     <h1>Financial Report</h1>
     <p><strong>Period:</strong> {{ $data['period_label'] ?? $data['period'] }}</p>
 
@@ -94,5 +95,6 @@
     </table>
 
     <p style="margin-top: 30px; font-size: 10px; color: #888;">Generated on {{ now()->format('Y-m-d H:i:s') }}</p>
+    </div>
 </body>
 </html>

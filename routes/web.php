@@ -77,7 +77,7 @@ Route::middleware(['auth'])->group(function () {
     Route::get('/misc/export/csv', [MiscellaneousController::class, 'exportCsv'])->name('misc.export.csv');
 
     // ─── Users ──────────────────────────────────────────────────
-    Route::resource('users', UserController::class);
+    Route::resource('users', UserController::class)->middleware('role:super_admin,admin');
 
     // ─── Retainers ──────────────────────────────────────────────
     // ✅ Retainers Trash & restore routes (BEFORE resource)
@@ -96,24 +96,26 @@ Route::middleware(['auth'])->group(function () {
 
     // ─── Reports ────────────────────────────────────────────────
     Route::get('/reports', [ReportController::class, 'index'])->name('reports.index');
-    Route::get('/reports/export/csv', [ReportController::class, 'exportCsv'])->name('reports.export.csv');
-    Route::get('/reports/export/pdf', [ReportController::class, 'exportPdf'])->name('reports.export.pdf');
+    Route::get('/reports/export/csv', [ReportController::class, 'exportCsv'])->middleware('role:super_admin,admin')->name('reports.export.csv');
+    Route::get('/reports/export/pdf', [ReportController::class, 'exportPdf'])->middleware('role:super_admin,admin')->name('reports.export.pdf');
     Route::get('/reports/aging', [ReportController::class, 'aging'])->name('reports.aging');
-    Route::get('/reports/aging/export/csv', [ReportController::class, 'exportAgingCsv'])->name('reports.aging.export.csv');
-    Route::get('/reports/aging/export/pdf', [ReportController::class, 'exportAgingPdf'])->name('reports.aging.export.pdf');
+    Route::get('/reports/aging/export/csv', [ReportController::class, 'exportAgingCsv'])->middleware('role:super_admin,admin')->name('reports.aging.export.csv');
+    Route::get('/reports/aging/export/pdf', [ReportController::class, 'exportAgingPdf'])->middleware('role:super_admin,admin')->name('reports.aging.export.pdf');
     Route::get('/reports/payables-aging', [ReportController::class, 'payablesAging'])->name('reports.payables-aging');
-    Route::get('/reports/payables-aging/export/csv', [ReportController::class, 'exportPayablesCsv'])->name('reports.payables-aging.export.csv');
-    Route::get('/reports/payables-aging/export/pdf', [ReportController::class, 'exportPayablesPdf'])->name('reports.payables-aging.export.pdf');
+    Route::get('/reports/payables-aging/export/csv', [ReportController::class, 'exportPayablesCsv'])->middleware('role:super_admin,admin')->name('reports.payables-aging.export.csv');
+    Route::get('/reports/payables-aging/export/pdf', [ReportController::class, 'exportPayablesPdf'])->middleware('role:super_admin,admin')->name('reports.payables-aging.export.pdf');
 
     // ─── Items ──────────────────────────────────────────────────
-    Route::resource('items', ItemController::class)->only(['store', 'destroy', 'edit', 'update']);
+    Route::resource('items', ItemController::class)->only(['store', 'destroy'])->middleware('role:super_admin,admin');
 
     // ─── Settings ───────────────────────────────────────────────
-    Route::get('/settings', [SettingsController::class, 'index'])->name('settings');
-    Route::put('/settings', [SettingsController::class, 'update'])->name('settings.update');
-    Route::post('/settings/logo', [SettingsController::class, 'uploadLogo'])->name('settings.logo.upload');
-    Route::delete('/settings/logo', [SettingsController::class, 'removeLogo'])->name('settings.logo.remove');
-    Route::get('/settings/backup', [SettingsController::class, 'downloadBackup'])->name('settings.backup.download');
+    Route::middleware('role:super_admin,admin')->group(function () {
+        Route::get('/settings', [SettingsController::class, 'index'])->name('settings');
+        Route::put('/settings', [SettingsController::class, 'update'])->name('settings.update');
+        Route::post('/settings/logo', [SettingsController::class, 'uploadLogo'])->name('settings.logo.upload');
+        Route::delete('/settings/logo', [SettingsController::class, 'removeLogo'])->name('settings.logo.remove');
+        Route::get('/settings/backup', [SettingsController::class, 'downloadBackup'])->name('settings.backup.download');
+    });
 
     // ─── Quotations ─────────────────────────────────────────────
     // ✅ Quotations Trash & restore routes (BEFORE resource)
@@ -130,9 +132,11 @@ Route::middleware(['auth'])->group(function () {
     // ─── Profile ─────────────────────────────────────────────────
     Route::get('/profile', [ProfileController::class, 'edit'])->name('profile.edit');
     Route::match(['PUT', 'POST'], '/profile', [ProfileController::class, 'update'])->name('profile.update');
-
+    Route::get('/profile/avatar/{filename}', [ProfileController::class, 'showAvatar'])
+    ->where('filename', '.*')
+    ->name('profile.avatar');
     // Audit-log
-    Route::get('/admin/audit-log', [ActivityLogController::class, 'index'])->name('admin.audit-log');
+    Route::get('/admin/audit-log', [ActivityLogController::class, 'index'])->middleware('role:super_admin')->name('admin.audit-log');
 });
 
 require __DIR__.'/auth.php';
