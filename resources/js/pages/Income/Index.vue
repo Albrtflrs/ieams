@@ -28,6 +28,7 @@ const selectedCategory = ref(props.filters.category ?? '');
 const selectedStatus = ref(props.filters.status ?? '');
 const selectedClientType = ref(props.filters.client_type ?? '');
 const searchQuery = ref(props.filters.search ?? '');
+const appliedSearchQuery = ref(searchQuery.value);
 const dateFrom = ref(props.filters.date_from ?? '');
 const dateTo = ref(props.filters.date_to ?? '');
 
@@ -66,12 +67,12 @@ function debounce(fn, delay) {
     };
 }
 
-const applyFilters = debounce(() => {
+const applyFilters = () => {
     const params = {
         category: selectedCategory.value || undefined,
         status: selectedStatus.value || undefined,
         client_type: selectedClientType.value || undefined,
-        search: searchQuery.value || undefined,
+        search: appliedSearchQuery.value || undefined,
         date_from: dateFrom.value || undefined,
         date_to: dateTo.value || undefined,
     };
@@ -80,15 +81,22 @@ const applyFilters = debounce(() => {
         preserveScroll: true,
         replace: true,
     });
-}, 300);
+};
 
-watch([selectedCategory, selectedStatus, selectedClientType, searchQuery, dateFrom, dateTo], applyFilters);
+const debouncedSearch = debounce(() => {
+    appliedSearchQuery.value = searchQuery.value;
+    applyFilters();
+}, 2000);
+const debouncedFilters = debounce(applyFilters, 300);
+watch(searchQuery, debouncedSearch);
+watch([selectedCategory, selectedStatus, selectedClientType, dateFrom, dateTo], debouncedFilters);
 
 const resetFilters = () => {
     selectedCategory.value = '';
     selectedStatus.value = '';
     selectedClientType.value = '';
     searchQuery.value = '';
+    appliedSearchQuery.value = '';
     selectedPeriod.value = 'all';
     dateFrom.value = '';
     dateTo.value = '';

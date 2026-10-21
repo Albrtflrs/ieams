@@ -29,6 +29,7 @@ const deleteSupplier = (id) => {
 
 // ─── Search state ──────────────────────────
 const search = ref(props.filters?.search || '');
+const appliedSearch = ref(search.value);
 
 // ─── Debounce helper ────────────────────────
 function debounce(fn, delay) {
@@ -41,14 +42,15 @@ function debounce(fn, delay) {
 
 // ─── Apply search ───────────────────────────
 const applySearch = debounce(() => {
+    appliedSearch.value = search.value;
     const params = {};
-    if (search.value) params.search = search.value;
+    if (appliedSearch.value) params.search = appliedSearch.value;
     router.get(route('suppliers.index'), params, {
         preserveState: true,
         preserveScroll: true,
         replace: true,
     });
-}, 300);
+}, 2000);
 
 // ─── Watch search ───────────────────────────
 watch(search, applySearch);
@@ -56,6 +58,7 @@ watch(search, applySearch);
 // ─── Reset search ───────────────────────────
 const resetSearch = () => {
     search.value = '';
+    appliedSearch.value = '';
     window.location.href = route('suppliers.index');
 };
 </script>
@@ -74,7 +77,7 @@ const resetSearch = () => {
             <!-- Header -->
             <div class="flex flex-wrap justify-between items-center mb-4 gap-2">
                 <h1 class="text-2xl font-bold">Suppliers</h1>
-                <Link :href="route('suppliers.create')" class="bg-blue-500 text-white px-4 py-2 rounded">Add Supplier</Link>
+                <Link :href="route('suppliers.create')" class="btn btn-primary btn-md">Add Supplier</Link>
             </div>
 
             <!-- Summary Cards with Tooltips -->
@@ -98,7 +101,7 @@ const resetSearch = () => {
                 </div>
 
                 <!-- Top Supplier (Spend) -->
-                <div class="bg-gradient-to-br from-purple-500 to-violet-600 text-white rounded-lg p-4 shadow relative">
+                <div class="bg-gradient-to-br from-rose-600 to-red-700 text-white rounded-lg p-4 shadow relative">
                     <div class="flex items-center justify-between">
                         <p class="text-sm uppercase tracking-wider opacity-80">Top Supplier (Spend)</p>
                         <TooltipIcon text="Supplier with the highest total expenses." />

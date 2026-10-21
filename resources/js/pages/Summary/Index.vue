@@ -213,10 +213,10 @@ const mainCards = computed(() => [
         key: 'direct_costs', 
         label: 'Direct Costs', 
         icon: 'M16 10a4 4 0 01-8 0M8 21V14M16 21V14M12 18h.01M8 12h8',
-        color: 'cyan',
-        bg: 'bg-cyan-50 dark:bg-cyan-900/20',
-        text: 'text-cyan-700 dark:text-cyan-300',
-        iconColor: 'text-cyan-500',
+        color: 'rose',
+        bg: 'bg-rose-50 dark:bg-rose-900/20',
+        text: 'text-rose-700 dark:text-rose-300',
+        iconColor: 'text-rose-500',
         labelColor: 'text-gray-500 dark:text-gray-400',
         progress: '35%',
         change: '+3.2%',
@@ -226,10 +226,10 @@ const mainCards = computed(() => [
         key: 'gross_profit', 
         label: 'Gross Profit', 
         icon: 'M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z',
-        color: 'violet',
-        bg: 'bg-violet-50 dark:bg-violet-900/20',
-        text: 'text-violet-700 dark:text-violet-300',
-        iconColor: 'text-violet-500',
+        color: 'emerald',
+        bg: 'bg-emerald-50 dark:bg-emerald-900/20',
+        text: 'text-emerald-700 dark:text-emerald-300',
+        iconColor: 'text-emerald-500',
         labelColor: 'text-gray-500 dark:text-gray-400',
         progress: '68%',
         change: '+4.8%',
@@ -239,23 +239,23 @@ const mainCards = computed(() => [
         key: 'operating_expenses', 
         label: 'Operating Expenses', 
         icon: 'M3 6h18M9 4v2m6-2v2M5 12h14M7 18h10',
-        color: 'orange',
-        bg: 'bg-orange-50 dark:bg-orange-900/20',
-        text: 'text-orange-700 dark:text-orange-300',
-        iconColor: 'text-orange-500',
+        color: 'rose',
+        bg: 'bg-rose-50 dark:bg-rose-900/20',
+        text: 'text-rose-700 dark:text-rose-300',
+        iconColor: 'text-rose-500',
         labelColor: 'text-gray-500 dark:text-gray-400',
         progress: '55%',
         change: '+1.8%',
-        changeColor: 'text-amber-500'
+        changeColor: 'text-rose-500'
     },
     { 
         key: 'operating_profit', 
         label: 'Operating Profit', 
         icon: 'M16 8v8m-4-5v5m-4-2v2m-2 4h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z',
-        color: 'pink',
-        bg: 'bg-pink-50 dark:bg-pink-900/20',
-        text: 'text-pink-700 dark:text-pink-300',
-        iconColor: 'text-pink-500',
+        color: 'emerald',
+        bg: 'bg-emerald-50 dark:bg-emerald-900/20',
+        text: 'text-emerald-700 dark:text-emerald-300',
+        iconColor: 'text-emerald-500',
         labelColor: 'text-gray-500 dark:text-gray-400',
         progress: '62%',
         change: '+7.3%',
@@ -265,10 +265,10 @@ const mainCards = computed(() => [
         key: 'cash_balance', 
         label: 'Cash Balance', 
         icon: 'M17 9V7a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2m2 4h10a2 2 0 002-2v-6a2 2 0 00-2-2H9a2 2 0 00-2 2v6a2 2 0 002 2zm7-5a2 2 0 11-4 0 2 2 0 014 0z',
-        color: 'cyan',
-        bg: 'bg-cyan-50 dark:bg-cyan-900/20',
-        text: 'text-cyan-700 dark:text-cyan-300',
-        iconColor: 'text-cyan-500',
+        color: 'indigo',
+        bg: 'bg-indigo-50 dark:bg-indigo-900/20',
+        text: 'text-indigo-700 dark:text-indigo-300',
+        iconColor: 'text-indigo-500',
         labelColor: 'text-gray-500 dark:text-gray-400',
         progress: '82%',
         change: '+2.1%',
@@ -327,7 +327,7 @@ const getVal = (key) => {
                     <Link :href="route('dashboard')" class="bg-gray-500 hover:bg-gray-600 text-white px-4 py-2 rounded text-sm">
                         Dashboard
                     </Link>
-                    <Link :href="route('reports.index')" class="bg-blue-500 hover:bg-blue-600 text-white px-4 py-2 rounded text-sm">
+                    <Link :href="route('reports.index')" class="btn btn-primary btn-md">
                         Full Reports
                     </Link>
                 </div>
@@ -350,28 +350,28 @@ const getVal = (key) => {
             <!-- Quick Period Buttons -->
             <div class="flex flex-wrap gap-2 mb-3">
                 <button @click="setPeriod('this_month')" 
-                        class="px-4 py-1.5 text-sm rounded-full border border-blue-300 dark:border-blue-700 text-blue-700 dark:text-blue-300 hover:bg-blue-50 dark:hover:bg-blue-900/30 transition"
-                        :class="selectedPeriod === 'this_month' ? 'bg-blue-500 text-white border-blue-500 hover:bg-blue-600' : ''">
+                        class="px-4 py-1.5 text-sm rounded-full border border-emerald-300 dark:border-emerald-700 text-emerald-700 dark:text-emerald-300 hover:bg-emerald-50 dark:hover:bg-emerald-900/30 transition"
+                        :class="selectedPeriod === 'this_month' ? 'bg-emerald-600 text-white border-emerald-600 hover:bg-emerald-700' : ''">
                     MTD
                 </button>
                 <button @click="setPeriod('last_month')"
-                        class="px-4 py-1.5 text-sm rounded-full border border-blue-300 dark:border-blue-700 text-blue-700 dark:text-blue-300 hover:bg-blue-50 dark:hover:bg-blue-900/30 transition"
-                        :class="selectedPeriod === 'last_month' ? 'bg-blue-500 text-white border-blue-500 hover:bg-blue-600' : ''">
+                        class="px-4 py-1.5 text-sm rounded-full border border-emerald-300 dark:border-emerald-700 text-emerald-700 dark:text-emerald-300 hover:bg-emerald-50 dark:hover:bg-emerald-900/30 transition"
+                        :class="selectedPeriod === 'last_month' ? 'bg-emerald-600 text-white border-emerald-600 hover:bg-emerald-700' : ''">
                     Last Month
                 </button>
                 <button @click="setPeriod('this_year')"
-                        class="px-4 py-1.5 text-sm rounded-full border border-blue-300 dark:border-blue-700 text-blue-700 dark:text-blue-300 hover:bg-blue-50 dark:hover:bg-blue-900/30 transition"
-                        :class="selectedPeriod === 'this_year' ? 'bg-blue-500 text-white border-blue-500 hover:bg-blue-600' : ''">
+                        class="px-4 py-1.5 text-sm rounded-full border border-emerald-300 dark:border-emerald-700 text-emerald-700 dark:text-emerald-300 hover:bg-emerald-50 dark:hover:bg-emerald-900/30 transition"
+                        :class="selectedPeriod === 'this_year' ? 'bg-emerald-600 text-white border-emerald-600 hover:bg-emerald-700' : ''">
                     YTD
                 </button>
                 <button @click="setPeriod('last_12_months')"
-                        class="px-4 py-1.5 text-sm rounded-full border border-blue-300 dark:border-blue-700 text-blue-700 dark:text-blue-300 hover:bg-blue-50 dark:hover:bg-blue-900/30 transition"
-                        :class="selectedPeriod === 'last_12_months' ? 'bg-blue-500 text-white border-blue-500 hover:bg-blue-600' : ''">
+                        class="px-4 py-1.5 text-sm rounded-full border border-emerald-300 dark:border-emerald-700 text-emerald-700 dark:text-emerald-300 hover:bg-emerald-50 dark:hover:bg-emerald-900/30 transition"
+                        :class="selectedPeriod === 'last_12_months' ? 'bg-emerald-600 text-white border-emerald-600 hover:bg-emerald-700' : ''">
                     12M
                 </button>
                 <button @click="setPeriod('all_time')"
-                        class="px-4 py-1.5 text-sm rounded-full border border-blue-300 dark:border-blue-700 text-blue-700 dark:text-blue-300 hover:bg-blue-50 dark:hover:bg-blue-900/30 transition"
-                        :class="selectedPeriod === 'all_time' ? 'bg-blue-500 text-white border-blue-500 hover:bg-blue-600' : ''">
+                        class="px-4 py-1.5 text-sm rounded-full border border-emerald-300 dark:border-emerald-700 text-emerald-700 dark:text-emerald-300 hover:bg-emerald-50 dark:hover:bg-emerald-900/30 transition"
+                        :class="selectedPeriod === 'all_time' ? 'bg-emerald-600 text-white border-emerald-600 hover:bg-emerald-700' : ''">
                     All Time
                 </button>
             </div>
@@ -391,7 +391,7 @@ const getVal = (key) => {
                         <label class="text-sm font-medium mr-2">Date To:</label>
                         <input type="date" v-model="dateTo" class="border rounded px-3 py-1 dark:bg-gray-700" />
                     </div>
-                    <button @click="applyFilter" class="bg-blue-500 hover:bg-blue-600 text-white px-4 py-1 rounded">Apply</button>
+                    <button @click="applyFilter" class="btn btn-primary btn-md">Apply</button>
                 </div>
             </div>
 

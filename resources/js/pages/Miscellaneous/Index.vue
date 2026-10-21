@@ -21,6 +21,7 @@ const filters = ref({
     date_from: props.filters?.date_from || '',
     date_to: props.filters?.date_to || '',
 });
+const appliedSearch = ref(filters.value.search);
 
 // ─── Debounce helper ────────────────────────
 function debounce(fn, delay) {
@@ -32,23 +33,31 @@ function debounce(fn, delay) {
 }
 
 // ─── Apply filters ──────────────────────────
-const applyFilters = debounce(() => {
+const applyFilters = () => {
     const params = new URLSearchParams();
     Object.keys(filters.value).forEach(key => {
-        if (filters.value[key]) params.append(key, filters.value[key]);
+        const value = key === 'search' ? appliedSearch.value : filters.value[key];
+        if (value) params.append(key, value);
     });
     router.get(route('misc.index'), params.toString(), {
         preserveState: true,
         preserveScroll: true,
         replace: true,
     });
-}, 300);
+};
 
-watch(filters, applyFilters, { deep: true });
+const applySearch = debounce(() => {
+    appliedSearch.value = filters.value.search;
+    applyFilters();
+}, 2000);
+const applyOtherFilters = debounce(applyFilters, 300);
+watch(() => filters.value.search, applySearch);
+watch(() => [filters.value.type, filters.value.category, filters.value.date_from, filters.value.date_to], applyOtherFilters);
 
 // ─── Reset filters ──────────────────────────
 const resetFilters = () => {
     filters.value = { type: '', category: '', search: '', date_from: '', date_to: '' };
+    appliedSearch.value = '';
     applyFilters();
 };
 

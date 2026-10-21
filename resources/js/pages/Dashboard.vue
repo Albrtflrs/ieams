@@ -1,7 +1,7 @@
 <script setup>
 import AppLayout from '@/Layouts/AppLayout.vue';
 import { Head, Link, router } from '@inertiajs/vue3';
-import { onMounted, ref, watch, computed } from 'vue';
+import { onMounted, onUnmounted, ref, watch, computed } from 'vue';
 import Chart from 'chart.js/auto';
 import { useDarkMode } from '@/composables/useDarkMode';
 import AppStatus from '@/Components/AppStatus.vue';
@@ -42,11 +42,7 @@ const toNumber = (val) => {
 };
 
 // ─── Color Palette ────────────────────────────
-const colorPalette = [
-    '#6366F1', '#8B5CF6', '#EC4899', '#F59E0B', '#10B981',
-    '#3B82F6', '#F43F5E', '#14B8A6', '#F97316', '#84CC16',
-    '#06B6D4', '#A855F7',
-];
+const expensePalette = ['#881337', '#9f1239', '#be123c', '#e11d48', '#f43f5e', '#fb7185'];
 
 // Chart refs
 let incomeExpenseChart = null;
@@ -56,6 +52,16 @@ let accountingChart = null;
 
 const selectedMonth = ref(new Date().toISOString().slice(0, 7));
 const searchQuery = ref('');
+const appliedSearchQuery = ref('');
+let searchTimeout = null;
+
+watch(searchQuery, (value) => {
+    clearTimeout(searchTimeout);
+    searchTimeout = setTimeout(() => {
+        appliedSearchQuery.value = value;
+    }, 2000);
+});
+onUnmounted(() => clearTimeout(searchTimeout));
 
 function getChartTextColor() { return isDark.value ? '#94a3b8' : '#64748b'; }
 function getGridColor() { return isDark.value ? '#1e293b' : '#f1f5f9'; }
@@ -116,13 +122,13 @@ function initCharts() {
                 datasets: [{ 
                     label: 'Net Income', 
                     data: netData, 
-                    borderColor: '#8b5cf6', 
-                    backgroundColor: dark ? 'rgba(139,92,246,0.15)' : 'rgba(139,92,246,0.08)',
+                    borderColor: '#4f46e5', 
+                    backgroundColor: dark ? 'rgba(79,70,229,0.15)' : 'rgba(79,70,229,0.08)',
                     tension: 0.4, 
                     fill: true, 
                     pointRadius: 3, 
-                    pointBackgroundColor: '#8b5cf6',
-                    pointBorderColor: '#8b5cf6',
+                    pointBackgroundColor: '#4f46e5',
+                    pointBorderColor: '#4f46e5',
                     borderWidth: 2,
                 }] 
             },
@@ -134,7 +140,7 @@ function initCharts() {
     const ctx3 = document.getElementById('expenseCategoryChart');
     if (ctx3 && props.expense_categories.length) {
         const sorted = [...props.expense_categories].sort((a,b) => b.amount - a.amount);
-        const colors = sorted.map((_, i) => colorPalette[i % colorPalette.length]);
+        const colors = sorted.map((_, i) => expensePalette[i % expensePalette.length]);
         expenseCategoryChart = new Chart(ctx3, {
             type: 'bar',
             data: {
@@ -156,7 +162,7 @@ function initCharts() {
     const ctx4 = document.getElementById('accountingChart');
     if (ctx4 && props.accounting_categories.length) {
         const sorted = [...props.accounting_categories].sort((a,b) => b.amount - a.amount);
-        const colors = sorted.map((_, i) => colorPalette[(i + 3) % colorPalette.length]);
+        const colors = sorted.map((_, i) => expensePalette[(i + 2) % expensePalette.length]);
         accountingChart = new Chart(ctx4, {
             type: 'bar',
             data: {
@@ -183,11 +189,11 @@ function applyFilter() {
 
 const filteredTransactions = computed(() => {
     const transactions = props.recent_transactions ?? [];
-    if (!searchQuery.value) return transactions;
+    if (!appliedSearchQuery.value) return transactions;
     return transactions.filter(tx =>
-        tx.particulars?.toLowerCase().includes(searchQuery.value.toLowerCase()) ||
-        tx.client_name?.toLowerCase().includes(searchQuery.value.toLowerCase()) ||
-        tx.supplier_name?.toLowerCase().includes(searchQuery.value.toLowerCase())
+        tx.particulars?.toLowerCase().includes(appliedSearchQuery.value.toLowerCase()) ||
+        tx.client_name?.toLowerCase().includes(appliedSearchQuery.value.toLowerCase()) ||
+        tx.supplier_name?.toLowerCase().includes(appliedSearchQuery.value.toLowerCase())
     );
 });
 
@@ -215,12 +221,13 @@ const toggleGroup = (key) => {
 
 // ─── Color Mapping for Card Labels, Values & Icons ──
 const cardColorMap = {
+    'Revenue': { label: 'text-emerald-600 dark:text-emerald-400', value: 'text-emerald-700 dark:text-emerald-300', bg: 'bg-emerald-50 dark:bg-emerald-900/20', icon: 'text-emerald-500' },
     'Gross Profit': { label: 'text-emerald-600 dark:text-emerald-400', value: 'text-emerald-700 dark:text-emerald-300', bg: 'bg-emerald-50 dark:bg-emerald-900/20', icon: 'text-emerald-500' },
-    'Amount Paid': { label: 'text-blue-600 dark:text-blue-400', value: 'text-blue-700 dark:text-blue-300', bg: 'bg-blue-50 dark:bg-blue-900/20', icon: 'text-blue-500' },
+    'Direct Costs': { label: 'text-rose-600 dark:text-rose-400', value: 'text-rose-700 dark:text-rose-300', bg: 'bg-rose-50 dark:bg-rose-900/20', icon: 'text-rose-500' },
     'Receivables': { label: 'text-amber-600 dark:text-amber-400', value: 'text-amber-700 dark:text-amber-300', bg: 'bg-amber-50 dark:bg-amber-900/20', icon: 'text-amber-500' },
-    'Net Sales': { label: 'text-purple-600 dark:text-purple-400', value: 'text-purple-700 dark:text-purple-300', bg: 'bg-purple-50 dark:bg-purple-900/20', icon: 'text-purple-500' },
-    'Royalty Gross': { label: 'text-rose-600 dark:text-rose-400', value: 'text-rose-700 dark:text-rose-300', bg: 'bg-rose-50 dark:bg-rose-900/20', icon: 'text-rose-500' },
-    'Royalty Net': { label: 'text-indigo-600 dark:text-indigo-400', value: 'text-indigo-700 dark:text-indigo-300', bg: 'bg-indigo-50 dark:bg-indigo-900/20', icon: 'text-indigo-500' },
+    'Net Profit': { label: 'text-indigo-600 dark:text-indigo-400', value: 'text-indigo-700 dark:text-indigo-300', bg: 'bg-indigo-50 dark:bg-indigo-900/20', icon: 'text-indigo-500' },
+    'Operating Expenses': { label: 'text-rose-600 dark:text-rose-400', value: 'text-rose-700 dark:text-rose-300', bg: 'bg-rose-50 dark:bg-rose-900/20', icon: 'text-rose-500' },
+    'Operating Profit': { label: 'text-emerald-600 dark:text-emerald-400', value: 'text-emerald-700 dark:text-emerald-300', bg: 'bg-emerald-50 dark:bg-emerald-900/20', icon: 'text-emerald-500' },
 };
 
 function getCardColors(label) {
@@ -245,11 +252,11 @@ const groups = [
         accent: '#10b981',
         cards: [
             { key: 'gross_profit_this_month', label: 'Gross Profit', icon: iconMap['Gross Profit'], to: route('reports.index') },
-            { key: 'direct_costs_this_month', label: 'Amount Paid', icon: iconMap['Amount Paid'], to: route('expenses.index') },
+            { key: 'direct_costs_this_month', label: 'Direct Costs', icon: iconMap['Amount Paid'], to: route('expenses.index') },
             { key: 'receivables_this_month', label: 'Receivables', icon: iconMap['Receivables'], to: route('income.index') },
-            { key: 'net_profit_this_month', label: 'Net Sales', icon: iconMap['Net Sales'], to: route('reports.index') },
-            { key: 'operating_expenses_this_month', label: 'Royalty Gross', icon: iconMap['Royalty Gross'], to: route('reports.index') },
-            { key: 'operating_profit_this_month', label: 'Royalty Net', icon: iconMap['Royalty Net'], to: route('reports.index') },
+            { key: 'net_profit_this_month', label: 'Net Profit', icon: iconMap['Net Sales'], to: route('reports.index') },
+            { key: 'operating_expenses_this_month', label: 'Operating Expenses', icon: iconMap['Royalty Gross'], to: route('reports.index') },
+            { key: 'operating_profit_this_month', label: 'Operating Profit', icon: iconMap['Royalty Net'], to: route('reports.index') },
         ]
     },
     {
@@ -258,11 +265,11 @@ const groups = [
         accent: '#6366f1',
         cards: [
             { key: 'gross_profit_last_12m', label: 'Gross Profit', icon: iconMap['Gross Profit'], to: route('reports.index') },
-            { key: 'direct_costs_last_12m', label: 'Amount Paid', icon: iconMap['Amount Paid'], to: route('expenses.index') },
+            { key: 'direct_costs_last_12m', label: 'Direct Costs', icon: iconMap['Amount Paid'], to: route('expenses.index') },
             { key: 'receivables_last_12m', label: 'Receivables', icon: iconMap['Receivables'], to: route('income.index') },
-            { key: 'net_profit_last_12m', label: 'Net Sales', icon: iconMap['Net Sales'], to: route('reports.index') },
-            { key: 'operating_expenses_last_12m', label: 'Royalty Gross', icon: iconMap['Royalty Gross'], to: route('reports.index') },
-            { key: 'operating_profit_last_12m', label: 'Royalty Net', icon: iconMap['Royalty Net'], to: route('reports.index') },
+            { key: 'net_profit_last_12m', label: 'Net Profit', icon: iconMap['Net Sales'], to: route('reports.index') },
+            { key: 'operating_expenses_last_12m', label: 'Operating Expenses', icon: iconMap['Royalty Gross'], to: route('reports.index') },
+            { key: 'operating_profit_last_12m', label: 'Operating Profit', icon: iconMap['Royalty Net'], to: route('reports.index') },
         ]
     },
 ];

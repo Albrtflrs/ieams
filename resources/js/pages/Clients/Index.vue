@@ -29,6 +29,7 @@ function destroy(id) {
 
 // ─── Search state ──────────────────────────
 const search = ref(props.filters?.search || '');
+const appliedSearch = ref(search.value);
 const clientType = ref(props.filters?.client_type || '');
 
 // ─── Debounce helper ────────────────────────
@@ -41,23 +42,30 @@ function debounce(fn, delay) {
 }
 
 // ─── Apply search ───────────────────────────
-const applySearch = debounce(() => {
+const applyFilters = () => {
     const params = {};
-    if (search.value) params.search = search.value;
+    if (appliedSearch.value) params.search = appliedSearch.value;
     if (clientType.value) params.client_type = clientType.value;
     router.get(route('clients.index'), params, {
         preserveState: true,
         preserveScroll: true,
         replace: true,
     });
-}, 300);
+};
 
-// ─── Watch search ───────────────────────────
-watch([search, clientType], applySearch);
+const debouncedSearch = debounce(() => {
+    appliedSearch.value = search.value;
+    applyFilters();
+}, 2000);
+const debouncedTypeFilter = debounce(applyFilters, 300);
+
+watch(search, debouncedSearch);
+watch(clientType, debouncedTypeFilter);
 
 // ─── Reset search ───────────────────────────
 const resetSearch = () => {
     search.value = '';
+    appliedSearch.value = '';
     // Force reload without query
     window.location.href = route('clients.index');
 };
@@ -68,7 +76,7 @@ const resetSearch = () => {
         <div class="p-6">
             <div class="flex flex-wrap justify-between items-center mb-4 gap-2">
                 <h1 class="text-2xl font-bold">Clients</h1>
-                <Link :href="route('clients.create')" class="bg-blue-500 text-white px-4 py-2 rounded">
+                <Link :href="route('clients.create')" class="btn btn-primary btn-md">
                     Add Client
                 </Link>
             </div>
@@ -83,7 +91,7 @@ const resetSearch = () => {
                     <p class="text-sm uppercase tracking-wider opacity-80">Total Revenue</p>
                     <p class="text-2xl font-bold">{{ peso(summary.total_revenue) }}</p>
                 </div>
-                <div class="bg-gradient-to-br from-purple-500 to-violet-600 text-white rounded-lg p-4 shadow">
+                <div class="bg-gradient-to-br from-emerald-600 to-green-700 text-white rounded-lg p-4 shadow">
                     <p class="text-sm uppercase tracking-wider opacity-80">Top Client (Revenue)</p>
                     <p class="text-lg font-bold">{{ summary.top_client_revenue?.name || '—' }}</p>
                     <p class="text-sm opacity-80">{{ peso(summary.top_client_revenue?.amount) }}</p>

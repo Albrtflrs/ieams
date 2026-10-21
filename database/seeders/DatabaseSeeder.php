@@ -21,6 +21,7 @@ class DatabaseSeeder extends Seeder
             MiscellaneousTransactionSeeder::class,
             SettingsSeeder::class,
             Aklanlocationseeder::class,
+            RandomDataSeeder::class,
         ]);
 
         Activity::enableLogging();

@@ -10,7 +10,7 @@ use Illuminate\Support\Facades\DB;
 
 class ClientController extends Controller
 {
-    public function index(Request $request) // 👈 added Request
+    public function index(Request $request) 
     {
         $this->authorize('viewAny', Client::class);
 

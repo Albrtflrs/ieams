@@ -35,6 +35,7 @@ const selectedMonth = ref(props.filters.month || new Date().toISOString().slice(
 const selectedCategory = ref(props.filters.category || '');
 const selectedStatus = ref(props.filters.status || '');
 const search = ref(props.filters.search || '');
+const appliedSearch = ref(search.value);
 
 function debounce(fn, delay) {
     let timeoutId = null;
@@ -49,7 +50,7 @@ const applyFilter = () => {
         period: selectedPeriod.value,
         category: selectedCategory.value,
         status: selectedStatus.value || undefined,
-        search: search.value || undefined,
+        search: appliedSearch.value || undefined,
     };
     if (selectedPeriod.value === 'this_month') {
         params.month = selectedMonth.value;
@@ -61,8 +62,13 @@ const applyFilter = () => {
     });
 };
 
-const debouncedApply = debounce(applyFilter, 300);
-watch([selectedPeriod, selectedMonth, selectedCategory, selectedStatus, search], debouncedApply);
+const debouncedSearch = debounce(() => {
+    appliedSearch.value = search.value;
+    applyFilter();
+}, 2000);
+const debouncedFilters = debounce(applyFilter, 300);
+watch(search, debouncedSearch);
+watch([selectedPeriod, selectedMonth, selectedCategory, selectedStatus], debouncedFilters);
 
 const resetFilters = () => {
     selectedPeriod.value = 'this_month';
@@ -70,6 +76,7 @@ const resetFilters = () => {
     selectedCategory.value = '';
     selectedStatus.value = '';
     search.value = '';
+    appliedSearch.value = '';
     applyFilter();
 };
 

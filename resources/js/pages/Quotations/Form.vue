@@ -219,10 +219,6 @@ const submit = () => {
                             <option v-for="c in clients" :key="c.id" :value="c.id">{{ c.name }}</option>
                         </select>
                     </div>
-                    <div>
-                        <label class="block text-sm font-medium text-gray-700 dark:text-gray-300">Client Name</label>
-                        <input v-model="form.client_name" class="w-full border rounded-lg px-3 py-2 dark:bg-gray-700 dark:border-gray-600" />
-                    </div>
                     <div class="md:col-span-2">
                         <label class="block text-sm font-medium text-gray-700 dark:text-gray-300">Client Address</label>
                         <textarea v-model="form.client_address" rows="2" class="w-full border rounded-lg px-3 py-2 dark:bg-gray-700 dark:border-gray-600"></textarea>

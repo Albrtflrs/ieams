@@ -50,7 +50,7 @@ watch(search, (value) => {
         } finally {
             if (id === requestId) loading.value = false;
         }
-    }, 250);
+    }, 2000);
 });
 
 function choose(option) {

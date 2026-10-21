@@ -64,6 +64,7 @@ const receivableFilters = ref({
     date_from: props.filters?.receivable_date_from || '',
     date_to: props.filters?.receivable_date_to || '',
 });
+const appliedReceivableSearch = ref(receivableFilters.value.search);
 
 const payableFilters = ref({
     search: props.filters?.payable_search || '',
@@ -71,6 +72,7 @@ const payableFilters = ref({
     date_from: props.filters?.payable_date_from || '',
     date_to: props.filters?.payable_date_to || '',
 });
+const appliedPayableSearch = ref(payableFilters.value.search);
 
 // ─── Debounce helper ────────────────────────
 function debounce(fn, delay) {
@@ -82,13 +84,13 @@ function debounce(fn, delay) {
 }
 
 // ─── Apply filters ──────────────────────────
-const applyFilters = debounce(() => {
+const applyFilters = () => {
     const params = {
-        receivable_search: receivableFilters.value.search || undefined,
+        receivable_search: appliedReceivableSearch.value || undefined,
         receivable_status: receivableFilters.value.status || undefined,
         receivable_date_from: receivableFilters.value.date_from || undefined,
         receivable_date_to: receivableFilters.value.date_to || undefined,
-        payable_search: payableFilters.value.search || undefined,
+        payable_search: appliedPayableSearch.value || undefined,
         payable_status: payableFilters.value.status || undefined,
         payable_date_from: payableFilters.value.date_from || undefined,
         payable_date_to: payableFilters.value.date_to || undefined,
@@ -98,15 +100,26 @@ const applyFilters = debounce(() => {
         preserveScroll: true,
         replace: true,
     });
-}, 300);
+};
 
-watch(receivableFilters, applyFilters, { deep: true });
-watch(payableFilters, applyFilters, { deep: true });
+const debouncedFilters = debounce(applyFilters, 300);
+watch(() => receivableFilters.value.search, debounce(() => {
+    appliedReceivableSearch.value = receivableFilters.value.search;
+    applyFilters();
+}, 2000));
+watch(() => payableFilters.value.search, debounce(() => {
+    appliedPayableSearch.value = payableFilters.value.search;
+    applyFilters();
+}, 2000));
+watch(() => [receivableFilters.value.status, receivableFilters.value.date_from, receivableFilters.value.date_to], debouncedFilters);
+watch(() => [payableFilters.value.status, payableFilters.value.date_from, payableFilters.value.date_to], debouncedFilters);
 
 // ─── Reset all filters ──────────────────────
 const resetFilters = () => {
     receivableFilters.value = { search: '', status: '', date_from: '', date_to: '' };
     payableFilters.value = { search: '', status: '', date_from: '', date_to: '' };
+    appliedReceivableSearch.value = '';
+    appliedPayableSearch.value = '';
     applyFilters();
 };
 
