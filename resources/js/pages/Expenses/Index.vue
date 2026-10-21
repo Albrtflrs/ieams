@@ -13,6 +13,7 @@ const props = defineProps({
 const page = usePage();
 const user = computed(() => page.props.auth?.user);
 const canViewTrash = computed(() => user.value && ['super_admin', 'admin'].includes(user.value.role));
+const canManageRecurring = computed(() => user.value && ['super_admin', 'admin'].includes(user.value.role));
 
 const deleteExpense = (id) => {
     if (confirm('Delete this expense record?')) {
@@ -117,6 +118,9 @@ const statusCounts = computed(() => props.summary.status_counts ?? {
                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
                         </svg>
                         Trash
+                    </Link>
+                    <Link v-if="canManageRecurring" :href="route('expenses.recurring.index')" class="bg-amber-100 dark:bg-amber-900/30 text-amber-800 dark:text-amber-300 px-4 py-2 rounded transition">
+                        Monthly Fixed Bills
                     </Link>
                     <Link :href="route('expenses.create')"
                         class="bg-emerald-500 hover:bg-emerald-600 text-white px-4 py-2 rounded transition">
@@ -229,6 +233,7 @@ const statusCounts = computed(() => props.summary.status_counts ?? {
                             <th class="px-4 py-2 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">Date</th>
                             <th class="px-4 py-2 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">Supplier</th>
                             <th class="px-4 py-2 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">Category</th>
+                            <th class="px-4 py-2 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">Subcategory</th>
                             <th class="px-4 py-2 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">Amount</th>
                             <th class="px-4 py-2 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">Status</th>
                             <th class="px-4 py-2 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">Receipt #</th>
@@ -243,6 +248,7 @@ const statusCounts = computed(() => props.summary.status_counts ?? {
                             <td class="px-4 py-2">{{ t.date || '-' }}</td>
                             <td class="px-4 py-2">{{ t.supplier_name || '-' }}</td>
                             <td class="px-4 py-2">{{ t.category }}</td>
+                            <td class="px-4 py-2">{{ t.subcategory || '-' }}</td>
                             <td class="px-4 py-2 font-medium text-rose-600 dark:text-rose-400">
                                 ₱{{ (t.amount || 0).toLocaleString() }}
                             </td>

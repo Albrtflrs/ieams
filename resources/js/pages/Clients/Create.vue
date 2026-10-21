@@ -4,6 +4,7 @@ import { useForm } from '@inertiajs/vue3';
 
 const form = useForm({
     name: '',
+    institution_type: '',
     contact_person: '',
     phone: '',
     email: '',
@@ -24,6 +25,20 @@ function submit() {
                     <label class="block font-medium">Name *</label>
                     <input v-model="form.name" class="w-full border rounded p-2" required />
                     <div v-if="form.errors.name" class="text-red-500 text-sm">{{ form.errors.name }}</div>
+                </div>
+                <div>
+                    <span class="block font-medium">Client Type *</span>
+                    <div class="flex gap-6 mt-2">
+                        <label class="flex items-center gap-2">
+                            <input type="checkbox" :checked="form.institution_type === 'Government'" @change="form.institution_type = $event.target.checked ? 'Government' : ''" />
+                            Government
+                        </label>
+                        <label class="flex items-center gap-2">
+                            <input type="checkbox" :checked="form.institution_type === 'Private Institution'" @change="form.institution_type = $event.target.checked ? 'Private Institution' : ''" />
+                            Private Institution
+                        </label>
+                    </div>
+                    <div v-if="form.errors.institution_type" class="text-red-500 text-sm">{{ form.errors.institution_type }}</div>
                 </div>
                 <div>
                     <label class="block font-medium">Contact Person</label>

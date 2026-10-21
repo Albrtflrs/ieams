@@ -6,6 +6,7 @@ use App\Http\Controllers\IncomeTransactionController;
 use App\Http\Controllers\DashboardController;
 use App\Http\Controllers\SupplierController;
 use App\Http\Controllers\ExpenseTransactionController;
+use App\Http\Controllers\RecurringExpenseController;
 use App\Http\Controllers\MiscellaneousController;
 use App\Http\Controllers\Auth\AuthenticatedSessionController;
 use App\Http\Controllers\Auth\RegisteredUserController;
@@ -48,6 +49,7 @@ Route::middleware(['auth'])->group(function () {
     Route::get('/dashboard', [DashboardController::class, 'index'])->name('dashboard');
 
     // ─── Clients ────────────────────────────────────────────────
+    Route::get('/clients/search', [ClientController::class, 'search'])->name('clients.search');
     Route::resource('clients', ClientController::class);
 
     // ─── Income ────────────────────────────────────────────────
@@ -61,6 +63,7 @@ Route::middleware(['auth'])->group(function () {
     Route::post('/income/{income}/mark-paid', [IncomeTransactionController::class, 'markPaid'])->name('income.mark-paid');
 
     // ─── Suppliers ──────────────────────────────────────────────
+    Route::get('/suppliers/search', [SupplierController::class, 'search'])->name('suppliers.search');
     Route::resource('suppliers', SupplierController::class);
 
     // ─── Expenses ───────────────────────────────────────────────
@@ -68,6 +71,13 @@ Route::middleware(['auth'])->group(function () {
     Route::get('/expenses/trash-bin', [ExpenseTransactionController::class, 'trash'])->name('expenses.trash');
     Route::patch('/expenses/{id}/restore', [ExpenseTransactionController::class, 'restore'])->name('expenses.restore');
     Route::delete('/expenses/{id}/force-delete', [ExpenseTransactionController::class, 'forceDelete'])->name('expenses.force-delete');
+
+    Route::get('/expenses/recurring', [RecurringExpenseController::class, 'index'])->name('expenses.recurring.index');
+    Route::get('/expenses/recurring/create', [RecurringExpenseController::class, 'create'])->name('expenses.recurring.create');
+    Route::post('/expenses/recurring', [RecurringExpenseController::class, 'store'])->name('expenses.recurring.store');
+    Route::get('/expenses/recurring/{recurringExpense}/edit', [RecurringExpenseController::class, 'edit'])->name('expenses.recurring.edit');
+    Route::put('/expenses/recurring/{recurringExpense}', [RecurringExpenseController::class, 'update'])->name('expenses.recurring.update');
+    Route::delete('/expenses/recurring/{recurringExpense}', [RecurringExpenseController::class, 'destroy'])->name('expenses.recurring.destroy');
 
     // Main expenses resource
     Route::resource('expenses', ExpenseTransactionController::class);

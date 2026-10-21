@@ -20,14 +20,14 @@ class SupplierController extends Controller
 
         $query = Supplier::query();
 
-        // Apply search filter
-        if ($search) {
-            $query->where(function ($q) use ($search) {
-                $q->where('name', 'like', "%{$search}%")
-                  ->orWhere('contact_person', 'like', "%{$search}%")
-                  ->orWhere('email', 'like', "%{$search}%")
-                  ->orWhere('phone', 'like', "%{$search}%")
-                  ->orWhere('address', 'like', "%{$search}%");
+        foreach (preg_split('/\s+/', trim((string) $search), -1, PREG_SPLIT_NO_EMPTY) ?: [] as $term) {
+            $query->where(function ($q) use ($term) {
+                $like = "%{$term}%";
+                $q->where('name', 'like', $like)
+                  ->orWhere('contact_person', 'like', $like)
+                  ->orWhere('email', 'like', $like)
+                  ->orWhere('phone', 'like', $like)
+                  ->orWhere('address', 'like', $like);
             });
         }
 
@@ -64,6 +64,23 @@ class SupplierController extends Controller
             'summary' => $summary,
             'filters' => ['search' => $search], // 👈 pass current search to Vue
         ]);
+    }
+
+    public function search(Request $request)
+    {
+        $this->authorize('viewAny', Supplier::class);
+
+        $search = trim((string) $request->query('q', ''));
+        if (mb_strlen($search) < 2) {
+            return response()->json([]);
+        }
+
+        $query = Supplier::query();
+        foreach (preg_split('/\s+/', $search, -1, PREG_SPLIT_NO_EMPTY) ?: [] as $term) {
+            $query->where('name', 'like', "%{$term}%");
+        }
+
+        return response()->json($query->orderBy('name')->limit(20)->get(['id', 'name']));
     }
 
     // ─── Other methods (create, store, edit, update, destroy) remain unchanged ───

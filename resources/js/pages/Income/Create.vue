@@ -3,10 +3,10 @@ import AppLayout from '@/Layouts/AppLayout.vue';
 import { useForm, Link } from '@inertiajs/vue3';
 import { useSettings } from '@/composables/useSettings';
 import MunicipalityBarangaySelect from '@/Components/MunicipalityBarangaySelect.vue';
+import SearchableEntitySelect from '@/Components/SearchableEntitySelect.vue';
 import { computed } from 'vue';
 
 const props = defineProps({
-    clients: Array,
     municipalities: Array,
     categories: Array,
     default_royalty_rate: Number,
@@ -16,7 +16,6 @@ const { currency } = useSettings();
 
 const form = useForm({
     client_id: '',
-    agency_department: '',
     municipal_barangay: '',
     particulars: '',
     gross_price: 0,
@@ -61,21 +60,11 @@ const submit = () => form.post(route('income.store'));
             <form @submit.prevent="submit" class="space-y-4 bg-white dark:bg-gray-800 p-6 rounded-xl shadow">
                 <!-- Client -->
                 <div>
-                    <label class="block font-medium text-gray-700 dark:text-gray-300" title="Select the client or agency for this transaction.">
+                    <label class="block font-medium text-gray-700 dark:text-gray-300" title="Select the client for this transaction.">
                         Client
                     </label>
-                    <select v-model="form.client_id" class="w-full border rounded-lg p-2 dark:bg-gray-700 dark:border-gray-600">
-                        <option value="">Select Client</option>
-                        <option v-for="c in clients" :key="c.id" :value="c.id">{{ c.name }}</option>
-                    </select>
-                </div>
-
-                <!-- Agency / Department -->
-                <div>
-                    <label class="block font-medium text-gray-700 dark:text-gray-300" title="Enter the agency or department name (if different from client).">
-                        Agency / Department *
-                    </label>
-                    <input v-model="form.agency_department" class="w-full border rounded-lg p-2 dark:bg-gray-700 dark:border-gray-600" required />
+                    <SearchableEntitySelect v-model="form.client_id" search-route="clients.search" placeholder="Search client by first or last name..." :allow-empty="true" />
+                    <div v-if="form.errors.client_id" class="text-red-500 text-sm mt-1">{{ form.errors.client_id }}</div>
                 </div>
 
                 <!-- Municipal / Barangay -->

@@ -45,9 +45,10 @@ class ExpenseTransactionController extends Controller
     /**
      * Display a listing of expense transactions with filters and search.
      */
-    public function index(Request $request)
+    public function index(Request $request, \App\Services\RecurringExpenseGenerator $recurringExpenseGenerator)
     {
         $this->authorize('viewAny', ExpenseTransaction::class);
+        $recurringExpenseGenerator->generateDue();
 
         // ─── Read filters ───────────────────────────────────────
         $period = $request->input('period', 'this_month');
@@ -132,6 +133,7 @@ class ExpenseTransactionController extends Controller
                 'date'           => $item->date->format('Y-m-d'),
                 'supplier_name'  => $item->supplier?->name,
                 'category'       => $item->category,
+                'subcategory'    => $item->subcategory,
                 'amount'         => $item->amount,
                 'receipt_number' => $item->receipt_number,
                 'payment_method' => $item->payment_method,
@@ -162,11 +164,9 @@ class ExpenseTransactionController extends Controller
     public function create()
     {
         $this->authorize('create', ExpenseTransaction::class);
-        $suppliers = Supplier::orderBy('name')->get(['id', 'name']);
         $categories = explode(',', Setting::get('default_expense_categories', self::DEFAULT_CATEGORIES));
 
         return Inertia::render('Expenses/Create', [
-            'suppliers' => $suppliers,
             'categories' => $categories,
         ]);
     }
@@ -183,12 +183,16 @@ class ExpenseTransactionController extends Controller
             'date' => 'required|date',
             'amount' => 'required|numeric|min:0',
             'category' => ['required', 'in:' . implode(',', $categories)],
+            'subcategory' => 'nullable|string|max:255',
             'description' => 'nullable|string',
             'receipt_number' => 'nullable|string|max:100',
             'payment_method' => 'nullable|string|max:50',
             'is_miscellaneous' => 'boolean',
             'status' => 'required|in:Paid,Unpaid,Pending',
         ]);
+        if (($validated['category'] ?? null) !== 'MONTHLY FIX BILLS') {
+            $validated['subcategory'] = null;
+        }
         $validated['created_by'] = auth()->id();
         ExpenseTransaction::create($validated);
         return redirect()->route('expenses.index')->with('success', 'Expense recorded.');
@@ -200,12 +204,15 @@ class ExpenseTransactionController extends Controller
     public function edit(ExpenseTransaction $expense)
     {
         $this->authorize('update', $expense);
-        $suppliers = Supplier::orderBy('name')->get(['id', 'name']);
+        $expense->load('supplier');
         $categories = explode(',', Setting::get('default_expense_categories', self::DEFAULT_CATEGORIES));
 
         return Inertia::render('Expenses/Edit', [
             'expense' => $expense,
-            'suppliers' => $suppliers,
+            'selectedSupplier' => $expense->supplier ? [
+                'id' => $expense->supplier->id,
+                'name' => $expense->supplier->name,
+            ] : null,
             'categories' => $categories,
         ]);
     }
@@ -222,12 +229,16 @@ class ExpenseTransactionController extends Controller
             'date' => 'required|date',
             'amount' => 'required|numeric|min:0',
             'category' => ['required', 'in:' . implode(',', $categories)],
+            'subcategory' => 'nullable|string|max:255',
             'description' => 'nullable|string',
             'receipt_number' => 'nullable|string|max:100',
             'payment_method' => 'nullable|string|max:50',
             'is_miscellaneous' => 'boolean',
             'status' => 'required|in:Paid,Unpaid,Pending',
         ]);
+        if (($validated['category'] ?? null) !== 'MONTHLY FIX BILLS') {
+            $validated['subcategory'] = null;
+        }
         $expense->update($validated);
         return redirect()->route('expenses.index')->with('success', 'Expense updated.');
     }

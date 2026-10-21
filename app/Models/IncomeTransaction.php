@@ -27,7 +27,7 @@ class IncomeTransaction extends Model
     ];
 
     protected $fillable = [
-        'item_no', 'client_id', 'agency_department', 'municipal_barangay',
+        'item_no', 'client_id', 'municipal_barangay',
         'particulars', 'date_delivered', 'amount_paid', 'date_paid',
         'receipt_number', 'gross_price', 'royalty_percent', 'deductions',
         'category', 'withdrawn', 'status', 'remarks', 'is_miscellaneous',

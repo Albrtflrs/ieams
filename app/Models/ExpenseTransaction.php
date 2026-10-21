@@ -17,16 +17,20 @@ class ExpenseTransaction extends Model
         'date',
         'amount',
         'category',
+        'subcategory',
         'description',
         'receipt_number',
         'payment_method',
         'is_miscellaneous',
         'created_by',
         'status',
+        'recurring_expense_id',
+        'recurring_period',
     ];
 
     protected $casts = [
         'date' => 'date',
+        'recurring_period' => 'date',
         'is_miscellaneous' => 'boolean',
         'status' => 'string',
     ];
@@ -34,6 +38,11 @@ class ExpenseTransaction extends Model
     public function supplier()
     {
         return $this->belongsTo(Supplier::class);
+    }
+
+    public function recurringExpense()
+    {
+        return $this->belongsTo(RecurringExpense::class);
     }
 
     public function creator()

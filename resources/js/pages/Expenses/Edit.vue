@@ -2,10 +2,11 @@
 import AppLayout from '@/Layouts/AppLayout.vue';
 import { Head, useForm, Link } from '@inertiajs/vue3';
 import { useSettings } from '@/composables/useSettings';
+import SearchableEntitySelect from '@/Components/SearchableEntitySelect.vue';
 
 const props = defineProps({
     expense: Object,
-    suppliers: Array,
+    selectedSupplier: Object,
     categories: Array, // now passed from controller
 });
 
@@ -16,6 +17,7 @@ const form = useForm({
     date: props.expense.date,
     amount: props.expense.amount,
     category: props.expense.category,
+    subcategory: props.expense.subcategory || '',
     description: props.expense.description || '',
     receipt_number: props.expense.receipt_number || '',
     payment_method: props.expense.payment_method || '',
@@ -53,10 +55,7 @@ function submit() {
 
                 <div>
                     <label class="block text-sm font-medium text-gray-700 dark:text-gray-300">Supplier</label>
-                    <select v-model="form.supplier_id" class="w-full border rounded-lg px-3 py-2 dark:bg-gray-700 dark:border-gray-600">
-                        <option :value="null">None</option>
-                        <option v-for="s in suppliers" :key="s.id" :value="s.id">{{ s.name }}</option>
-                    </select>
+                    <SearchableEntitySelect v-model="form.supplier_id" :selected-option="selectedSupplier" search-route="suppliers.search" placeholder="Search supplier by name..." :allow-empty="true" empty-label="No supplier" />
                     <div v-if="form.errors.supplier_id" class="text-red-500 text-sm">{{ form.errors.supplier_id }}</div>
                 </div>
 
@@ -77,11 +76,19 @@ function submit() {
                 <!-- Category dropdown with new categories -->
                 <div>
                     <label class="block text-sm font-medium text-gray-700 dark:text-gray-300">Category</label>
-                    <select v-model="form.category" class="w-full border rounded-lg px-3 py-2 dark:bg-gray-700 dark:border-gray-600">
+                    <select v-model="form.category" @change="form.subcategory = ''" class="w-full border rounded-lg px-3 py-2 dark:bg-gray-700 dark:border-gray-600">
                         <option value="">Select Category</option>
                         <option v-for="cat in props.categories" :key="cat" :value="cat">{{ cat }}</option>
                     </select>
                     <div v-if="form.errors.category" class="text-red-500 text-sm">{{ form.errors.category }}</div>
+                </div>
+                <div v-if="form.category === 'MONTHLY FIX BILLS'">
+                    <label class="block text-sm font-medium text-gray-700 dark:text-gray-300">Bill Subcategory</label>
+                    <input v-model="form.subcategory" list="bill-subcategories" placeholder="Electricity, Water, Internet, Rent..." class="w-full border rounded-lg px-3 py-2 dark:bg-gray-700 dark:border-gray-600" />
+                    <datalist id="bill-subcategories">
+                        <option value="Electricity" /><option value="Water" /><option value="Internet" /><option value="Rent" /><option value="Other" />
+                    </datalist>
+                    <div v-if="form.errors.subcategory" class="text-red-500 text-sm">{{ form.errors.subcategory }}</div>
                 </div>
 
                 <div>

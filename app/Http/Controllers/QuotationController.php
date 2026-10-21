@@ -226,7 +226,6 @@ class QuotationController extends Controller
         $incomeData = [
             'item_no' => $itemNo,
             'client_id' => $quotation->client_id,
-            'agency_department' => $quotation->client_name,
             'municipal_barangay' => $quotation->client_address ?? '',
             'particulars' => 'Quotation: ' . $quotation->quotation_number,
             'date_delivered' => $quotation->date_issued ?? now(),

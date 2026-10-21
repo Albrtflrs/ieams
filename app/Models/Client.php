@@ -13,7 +13,7 @@ class Client extends Model
     use SoftDeletes, HasFactory, LogsActivity;
 
     protected $fillable = [
-        'name', 'contact_person', 'phone', 'email', 'address'
+        'name', 'institution_type', 'contact_person', 'phone', 'email', 'address'
     ];
 
     // Relationships

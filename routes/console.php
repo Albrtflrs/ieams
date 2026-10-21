@@ -12,6 +12,7 @@ Artisan::command('inspire', function () {
 
 // ─── Schedule: Auto‑delete soft‑deleted records after 30 days ──
 Schedule::command('clean:trash --days=30')->dailyAt('02:00');
+Schedule::command('expenses:generate-recurring')->dailyAt('01:00')->withoutOverlapping();
 
 // ─── Alternative: Schedule via closure (no command needed) ─────
 // use App\Models\IncomeTransaction;

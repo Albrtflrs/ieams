@@ -24,7 +24,7 @@ class IncomeTransactionController extends Controller
     }
 
     // ─── Helper: Apply shared filters ──────────────────────────────────
-    private function applyFilters($query, string $category, string $status, string $search, string $dateFrom, string $dateTo)
+    private function applyFilters($query, string $category, string $status, string $search, string $dateFrom, string $dateTo, string $clientType = '')
     {
         if (auth()->user()->hasRole(['staff', 'viewer'])) {
             $query->where('created_by', auth()->id());
@@ -36,12 +36,11 @@ class IncomeTransactionController extends Controller
         if ($status !== '') {
             $query->where('status', $status);
         }
+        if (in_array($clientType, ['Government', 'Private Institution'], true)) {
+            $query->whereHas('client', fn ($cq) => $cq->where('institution_type', $clientType));
+        }
         if ($search !== '') {
-            $query->where(function ($q) use ($search) {
-                $q->where('agency_department', 'like', "%{$search}%")
-                  ->orWhere('particulars', 'like', "%{$search}%")
-                  ->orWhereHas('client', fn ($cq) => $cq->where('name', 'like', "%{$search}%"));
-            });
+            $query->whereHas('client', fn ($cq) => $cq->where('name', 'like', "%{$search}%"));
         }
         if ($dateFrom !== '') {
             $query->whereDate('date_delivered', '>=', $dateFrom);
@@ -63,10 +62,11 @@ class IncomeTransactionController extends Controller
         $search = request('search', '');
         $dateFrom = request('date_from', '');
         $dateTo = request('date_to', '');
+        $clientType = request('client_type', '');
 
         // ── Category totals ──
         $categoryTotals = $this->applyFilters(
-            IncomeTransaction::query(), $category, $status, $search, $dateFrom, $dateTo
+            IncomeTransaction::query(), $category, $status, $search, $dateFrom, $dateTo, $clientType
         )
             ->selectRaw('category, SUM(gross_price) as total')
             ->groupBy('category')
@@ -76,7 +76,7 @@ class IncomeTransactionController extends Controller
 
         // ── Summary totals ──
         $aggregates = $this->applyFilters(
-            IncomeTransaction::query(), $category, $status, $search, $dateFrom, $dateTo
+            IncomeTransaction::query(), $category, $status, $search, $dateFrom, $dateTo, $clientType
         )
             ->selectRaw('
                 SUM(gross_price) as gross_profit,
@@ -91,7 +91,7 @@ class IncomeTransactionController extends Controller
 
         // ── Status counts ──
         $statusCounts = $this->applyFilters(
-            IncomeTransaction::query(), $category, $status, $search, $dateFrom, $dateTo
+            IncomeTransaction::query(), $category, $status, $search, $dateFrom, $dateTo, $clientType
         )
             ->selectRaw('status, COUNT(*) as count')
             ->groupBy('status')
@@ -123,7 +123,7 @@ class IncomeTransactionController extends Controller
         $perPage = Setting::get('rows_per_page', 20);
 
         $transactionsQuery = $this->applyFilters(
-            IncomeTransaction::with('client'), $category, $status, $search, $dateFrom, $dateTo
+            IncomeTransaction::with('client'), $category, $status, $search, $dateFrom, $dateTo, $clientType
         );
 
         $transactions = $transactionsQuery->latest()
@@ -132,7 +132,7 @@ class IncomeTransactionController extends Controller
                 'id'               => $item->id,
                 'item_no'          => $item->item_no,
                 'client_name'      => $item->client?->name,
-                'agency_department'=> $item->agency_department,
+                'client_type'      => $item->client?->institution_type,
                 'municipality'     => $item->municipal_barangay ? explode(',', $item->municipal_barangay)[0] ?? '' : '',
                 'barangay'         => $item->municipal_barangay ? (explode(',', $item->municipal_barangay)[1] ?? '') : '',
                 'particulars'      => $item->particulars,
@@ -164,6 +164,7 @@ class IncomeTransactionController extends Controller
                 'search'     => $search,
                 'date_from'  => $dateFrom,
                 'date_to'    => $dateTo,
+                'client_type'=> $clientType,
             ],
             'categories'   => $categories,
         ]);
@@ -173,14 +174,12 @@ class IncomeTransactionController extends Controller
     public function create()
     {
         $this->authorize('create', IncomeTransaction::class);
-        $clients = Client::orderBy('name')->get(['id', 'name']);
         $municipalities = $this->getMunicipalitiesWithBarangays();
 
         $categories = explode(',', Setting::get('default_income_categories', self::FALLBACK_CATEGORIES));
         $defaultRoyalty = Setting::get('default_royalty_rate', 0);
 
         return Inertia::render('Income/Create', [
-            'clients'              => $clients,
             'municipalities'       => $municipalities,
             'categories'           => $categories,
             'default_royalty_rate' => $defaultRoyalty,
@@ -196,7 +195,6 @@ class IncomeTransactionController extends Controller
 
         $validated = $request->validate([
             'client_id'          => 'nullable|exists:clients,id',
-            'agency_department'  => 'required|string|max:255',
             'municipal_barangay' => 'nullable|string|max:255',
             'particulars'        => 'required|string',
             'date_delivered'     => 'nullable|date',
@@ -232,7 +230,7 @@ class IncomeTransactionController extends Controller
     public function edit(IncomeTransaction $income)
     {
         $this->authorize('update', $income);
-        $clients = Client::orderBy('name')->get(['id', 'name']);
+        $income->load('client');
         $municipalities = $this->getMunicipalitiesWithBarangays();
 
         $categories = explode(',', Setting::get('default_income_categories', self::FALLBACK_CATEGORIES));
@@ -243,7 +241,11 @@ class IncomeTransactionController extends Controller
 
         return Inertia::render('Income/Edit', [
             'transaction'   => $transaction,
-            'clients'       => $clients,
+            'selectedClient'=> $income->client ? [
+                'id' => $income->client->id,
+                'name' => $income->client->name,
+                'institution_type' => $income->client->institution_type,
+            ] : null,
             'municipalities'=> $municipalities,
             'categories'    => $categories,
         ]);
@@ -271,7 +273,6 @@ class IncomeTransactionController extends Controller
         $rules = [
             'item_no'            => 'nullable|string|max:50',
             'client_id'          => 'nullable|exists:clients,id',
-            'agency_department'  => 'required|string|max:255',
             'municipal_barangay' => 'nullable|string|max:255',
             'particulars'        => 'required|string',
             'date_delivered'     => 'nullable|date',

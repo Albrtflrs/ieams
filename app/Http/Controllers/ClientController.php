@@ -15,19 +15,25 @@ class ClientController extends Controller
         $this->authorize('viewAny', Client::class);
 
         $search = $request->input('search');
+        $clientType = $request->input('client_type', '');
 
         $perPage = Setting::get('rows_per_page', 20);
 
         $query = Client::query();
 
-        // Apply search filter
-        if ($search) {
-            $query->where(function ($q) use ($search) {
-                $q->where('name', 'like', "%{$search}%")
-                  ->orWhere('contact_person', 'like', "%{$search}%")
-                  ->orWhere('email', 'like', "%{$search}%")
-                  ->orWhere('phone', 'like', "%{$search}%")
-                  ->orWhere('address', 'like', "%{$search}%");
+        if (in_array($clientType, ['Government', 'Private Institution'], true)) {
+            $query->where('institution_type', $clientType);
+        }
+
+        // Match every search word, allowing names to be entered in any order.
+        foreach (preg_split('/\s+/', trim((string) $search), -1, PREG_SPLIT_NO_EMPTY) ?: [] as $term) {
+            $query->where(function ($q) use ($term) {
+                $like = "%{$term}%";
+                $q->where('name', 'like', $like)
+                  ->orWhere('contact_person', 'like', $like)
+                  ->orWhere('email', 'like', $like)
+                  ->orWhere('phone', 'like', $like)
+                  ->orWhere('address', 'like', $like);
             });
         }
 
@@ -37,6 +43,7 @@ class ClientController extends Controller
             ->through(fn($client) => [
                 'id' => $client->id,
                 'name' => $client->name,
+                'institution_type' => $client->institution_type,
                 'contact_person' => $client->contact_person,
                 'phone' => $client->phone,
                 'email' => $client->email,
@@ -50,7 +57,10 @@ class ClientController extends Controller
             ->orderBy('income_transactions_sum_amount_paid', 'desc')->first();
         $topClientCount = Client::withCount('incomeTransactions')
             ->orderBy('income_transactions_count', 'desc')->first();
-        $totalRevenue = Client::with('incomeTransactions')->get()->sum(fn($c) => $c->incomeTransactions->sum('amount_paid'));
+        $totalRevenue = DB::table('income_transactions')
+            ->join('clients', 'clients.id', '=', 'income_transactions.client_id')
+            ->whereNull('clients.deleted_at')
+            ->sum('income_transactions.amount_paid');
 
         $summary = [
             'total_clients' => $totalClients,
@@ -62,8 +72,25 @@ class ClientController extends Controller
         return Inertia::render('Clients/Index', [
             'clients' => $clients,
             'summary' => $summary,
-            'filters' => ['search' => $search], // 👈 pass current search to Vue
+            'filters' => ['search' => $search, 'client_type' => $clientType],
         ]);
+    }
+
+    public function search(Request $request)
+    {
+        $this->authorize('viewAny', Client::class);
+
+        $search = trim((string) $request->query('q', ''));
+        if (mb_strlen($search) < 2) {
+            return response()->json([]);
+        }
+
+        $query = Client::query();
+        foreach (preg_split('/\s+/', $search, -1, PREG_SPLIT_NO_EMPTY) ?: [] as $term) {
+            $query->where('name', 'like', "%{$term}%");
+        }
+
+        return response()->json($query->orderBy('name')->limit(20)->get(['id', 'name', 'institution_type']));
     }
 
     // ─── Other methods (create, store, edit, update, destroy) remain unchanged ───
@@ -78,6 +105,7 @@ class ClientController extends Controller
         $this->authorize('create', Client::class);
         $validated = $request->validate([
             'name' => 'required|string|max:255',
+            'institution_type' => 'required|in:Government,Private Institution',
             'contact_person' => 'nullable|string|max:255',
             'phone' => 'nullable|string|max:50',
             'email' => 'nullable|email|max:255',
@@ -99,6 +127,7 @@ class ClientController extends Controller
         $this->authorize('update', $client);
         $validated = $request->validate([
             'name' => 'required|string|max:255',
+            'institution_type' => 'required|in:Government,Private Institution',
             'contact_person' => 'nullable|string|max:255',
             'phone' => 'nullable|string|max:50',
             'email' => 'nullable|email|max:255',

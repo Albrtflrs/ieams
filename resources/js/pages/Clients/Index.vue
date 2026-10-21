@@ -13,6 +13,7 @@ const props = defineProps({
 const columns = [
     { key: 'id', label: 'ID' },
     { key: 'name', label: 'Name' },
+    { key: 'institution_type', label: 'Client Type' },
     { key: 'contact_person', label: 'Contact Person' },
     { key: 'phone', label: 'Phone' },
     { key: 'email', label: 'Email' },
@@ -28,6 +29,7 @@ function destroy(id) {
 
 // ─── Search state ──────────────────────────
 const search = ref(props.filters?.search || '');
+const clientType = ref(props.filters?.client_type || '');
 
 // ─── Debounce helper ────────────────────────
 function debounce(fn, delay) {
@@ -42,6 +44,7 @@ function debounce(fn, delay) {
 const applySearch = debounce(() => {
     const params = {};
     if (search.value) params.search = search.value;
+    if (clientType.value) params.client_type = clientType.value;
     router.get(route('clients.index'), params, {
         preserveState: true,
         preserveScroll: true,
@@ -50,7 +53,7 @@ const applySearch = debounce(() => {
 }, 300);
 
 // ─── Watch search ───────────────────────────
-watch(search, applySearch);
+watch([search, clientType], applySearch);
 
 // ─── Reset search ───────────────────────────
 const resetSearch = () => {
@@ -111,6 +114,14 @@ const resetSearch = () => {
                             ✕
                         </button>
                     </div>
+                </div>
+                <div>
+                    <label class="block text-xs font-medium text-gray-700 dark:text-gray-300">Client Type</label>
+                    <select v-model="clientType" class="border rounded-lg px-3 py-1.5 dark:bg-gray-700 dark:border-gray-600">
+                        <option value="">All Types</option>
+                        <option value="Government">Government</option>
+                        <option value="Private Institution">Private Institution</option>
+                    </select>
                 </div>
                 <button
                     @click="resetSearch"

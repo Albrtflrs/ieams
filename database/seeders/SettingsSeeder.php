@@ -25,7 +25,7 @@ class SettingsSeeder extends Seeder
             // New
             ['key' => 'logo_path', 'value' => ''], // will store relative path
             ['key' => 'default_income_categories', 'value' => 'CCTV AND SUPPLIES,OFFICE SUPPLIES,IT EQUIPMENT,SOFTWARE,ELECTRONICS/AIRCON,FURNITURE,KITCHENWARE,SOLAR,OTHERS'],
-            ['key' => 'default_expense_categories', 'value' => 'Office Supplies,Utilities,Rent,Transportation,Maintenance,Others'],
+            ['key' => 'default_expense_categories', 'value' => 'Office Supplies,Utilities,Rent,Transportation,Maintenance,Others,MONTHLY FIX BILLS'],
             ['key' => 'default_misc_categories', 'value' => 'Donation,Refund,Misc Sales,Other'],
             ['key' => 'invoice_prefix', 'value' => 'INV-'],
             ['key' => 'invoice_next_number', 'value' => 1],

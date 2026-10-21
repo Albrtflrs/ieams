@@ -13,7 +13,7 @@ use Illuminate\Database\Seeder;
  * and PhilAtlas (philatlas.com/lists/barangays-aklan.html), both of
  * which independently report 327 total barangays for Aklan.
  */
-class AklanLocationSeeder extends Seeder
+class Aklanlocationseeder extends Seeder
 {
     public function run(): void
     {

@@ -4,11 +4,12 @@ import { useForm } from '@inertiajs/vue3';
 import { Link } from '@inertiajs/vue3';
 import { computed } from 'vue';
 import MunicipalityBarangaySelect from '@/Components/MunicipalityBarangaySelect.vue';
+import SearchableEntitySelect from '@/Components/SearchableEntitySelect.vue';
 import { useSettings } from '@/composables/useSettings';
 
 const props = defineProps({
     transaction: Object,
-    clients: Array,
+    selectedClient: Object,
     municipalities: Array,
     categories: Array,
 });
@@ -19,7 +20,6 @@ const { currency } = useSettings();
 const form = useForm({
     item_no: props.transaction.item_no || '',
     client_id: props.transaction.client_id || '',
-    agency_department: props.transaction.agency_department || '',
     municipal_barangay: props.transaction.municipal_barangay || '',
     particulars: props.transaction.particulars || '',
     date_delivered: props.transaction.date_delivered || '',
@@ -96,18 +96,8 @@ const submit = () => {
                 <!-- Client -->
                 <div>
                     <label class="block font-medium text-gray-700 dark:text-gray-300">Client</label>
-                    <select v-model="form.client_id" class="w-full border rounded-lg p-2 dark:bg-gray-700 dark:border-gray-600">
-                        <option value="">Select Client</option>
-                        <option v-for="c in clients" :key="c.id" :value="c.id">{{ c.name }}</option>
-                    </select>
+                    <SearchableEntitySelect v-model="form.client_id" :selected-option="selectedClient" search-route="clients.search" placeholder="Search client by first or last name..." :allow-empty="true" />
                     <div v-if="form.errors.client_id" class="text-red-500 text-sm mt-1">{{ form.errors.client_id }}</div>
-                </div>
-
-                <!-- Agency / Department -->
-                <div>
-                    <label class="block font-medium text-gray-700 dark:text-gray-300">Agency / Department *</label>
-                    <input v-model="form.agency_department" class="w-full border rounded-lg p-2 dark:bg-gray-700 dark:border-gray-600" required />
-                    <div v-if="form.errors.agency_department" class="text-red-500 text-sm mt-1">{{ form.errors.agency_department }}</div>
                 </div>
 
                 <!-- Municipal / Barangay -->

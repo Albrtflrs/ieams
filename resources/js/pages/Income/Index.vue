@@ -26,6 +26,7 @@ const STATUSES = ['Paid', 'Unpaid', 'Cash On Hold', 'Paid Royalty'];
 // ── Filters ──
 const selectedCategory = ref(props.filters.category ?? '');
 const selectedStatus = ref(props.filters.status ?? '');
+const selectedClientType = ref(props.filters.client_type ?? '');
 const searchQuery = ref(props.filters.search ?? '');
 const dateFrom = ref(props.filters.date_from ?? '');
 const dateTo = ref(props.filters.date_to ?? '');
@@ -69,6 +70,7 @@ const applyFilters = debounce(() => {
     const params = {
         category: selectedCategory.value || undefined,
         status: selectedStatus.value || undefined,
+        client_type: selectedClientType.value || undefined,
         search: searchQuery.value || undefined,
         date_from: dateFrom.value || undefined,
         date_to: dateTo.value || undefined,
@@ -80,11 +82,12 @@ const applyFilters = debounce(() => {
     });
 }, 300);
 
-watch([selectedCategory, selectedStatus, searchQuery, dateFrom, dateTo], applyFilters);
+watch([selectedCategory, selectedStatus, selectedClientType, searchQuery, dateFrom, dateTo], applyFilters);
 
 const resetFilters = () => {
     selectedCategory.value = '';
     selectedStatus.value = '';
+    selectedClientType.value = '';
     searchQuery.value = '';
     selectedPeriod.value = 'all';
     dateFrom.value = '';
@@ -94,7 +97,8 @@ const resetFilters = () => {
 
 const columns = [
     { key: 'item_no', label: 'Item No.' },
-    { key: 'client_name', label: 'Client / Agency' },
+    { key: 'client_name', label: 'Client' },
+    { key: 'client_type', label: 'Client Type' },
     { key: 'municipality', label: 'Municipality' },
     { key: 'barangay', label: 'Barangay' },
     { key: 'particulars', label: 'Particulars' },
@@ -271,6 +275,14 @@ const clearSearch = () => {
                     </select>
                 </div>
                 <div class="flex items-center gap-2">
+                    <label class="text-sm font-medium text-gray-700 dark:text-gray-300">Client Type:</label>
+                    <select v-model="selectedClientType" class="border rounded px-3 py-1.5 dark:bg-gray-700">
+                        <option value="">All</option>
+                        <option value="Government">Government</option>
+                        <option value="Private Institution">Private Institution</option>
+                    </select>
+                </div>
+                <div class="flex items-center gap-2">
                     <label class="text-sm font-medium text-gray-700 dark:text-gray-300">Period:</label>
                     <select v-model="selectedPeriod" class="border rounded px-3 py-1.5 dark:bg-gray-700">
                         <option value="all">All Time</option>
@@ -285,12 +297,12 @@ const clearSearch = () => {
                     <input type="date" v-model="dateTo" class="border rounded px-2 py-1.5 dark:bg-gray-700" />
                 </div>
                 <div class="flex items-center gap-2 flex-1 min-w-[200px]">
-                    <label class="text-sm font-medium text-gray-700 dark:text-gray-300">Search:</label>
+                    <label class="text-sm font-medium text-gray-700 dark:text-gray-300">Client:</label>
                     <div class="relative flex-1">
                         <input
                             v-model="searchQuery"
                             type="text"
-                            placeholder="Client, agency, particulars..."
+                            placeholder="Search by client name..."
                             class="w-full border rounded-lg px-3 py-1.5 dark:bg-gray-700 dark:border-gray-600 pr-8"
                         />
                         <button
@@ -312,7 +324,7 @@ const clearSearch = () => {
             <div class="bg-white dark:bg-gray-800 rounded-xl shadow-sm border border-gray-100 dark:border-gray-800 overflow-hidden">
                 <DataTable :columns="columns" :data="transactions.data" row-key="id">
                     <template #column-client_name="{ row }">
-                        {{ row.client_name || row.agency_department || '-' }}
+                        {{ row.client_name || '-' }}
                     </template>
                     <template #column-municipality="{ value }">
                         {{ value || '-' }}
