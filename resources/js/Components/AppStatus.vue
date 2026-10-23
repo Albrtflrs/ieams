@@ -41,7 +41,7 @@ const sizeClasses = {
 
 <template>
     <span
-        class="inline-flex items-center rounded-full border font-medium shadow-sm transition-all hover:shadow-md"
+        class="inline-flex items-center rounded-full border font-medium uppercase shadow-sm transition-all hover:shadow-md"
         :class="[colorMap[type], sizeClasses[size]]"
     >
         <span class="inline-block w-1.5 h-1.5 rounded-full" :class="dotColor[type]"></span>

@@ -12,17 +12,13 @@ const { formatDate } = useDateFormat();
 const page = usePage();
 const currentUser = computed(() => page.props.auth?.user);
 
-// ─── Summary stats ──────────────────────
 const totalUsers = computed(() => props.users.total ?? 0);
-const roleCounts = computed(() => {
-    const counts = {};
-    if (props.users.data) {
-        props.users.data.forEach(u => {
-            counts[u.role] = (counts[u.role] || 0) + 1;
-        });
-    }
-    return counts;
-});
+
+const avatarUrl = (path) => {
+    if (!path) return '';
+    const filename = path.split('/').pop();
+    return `/profile/avatar/${encodeURIComponent(filename)}`;
+};
 
 // ─── Role display formatting ─────────────
 const formatRole = (role) => {
@@ -69,103 +65,88 @@ const roleBadgeClass = (role) => {
 
 <template>
     <AppLayout>
-        <div class="p-6">
-
-            <!-- Breadcrumb -->
-            <div class="text-sm text-gray-500 dark:text-gray-400 mb-2">
-                <Link :href="route('dashboard')" class="hover:underline">Home</Link>
-                <span class="mx-2">›</span>
-                <span class="font-medium text-gray-700 dark:text-gray-300">Users</span>
-            </div>
-
-            <!-- Header -->
-            <div class="flex flex-wrap justify-between items-center mb-4">
-                <h1 class="text-2xl font-bold">Users</h1>
+        <main class="p-6">
+            <header class="mb-6 flex flex-wrap items-center justify-between gap-4">
+                <div class="flex flex-wrap items-baseline gap-x-3 gap-y-1">
+                    <h1 class="text-2xl font-bold text-gray-900 dark:text-white">Users</h1>
+                    <span class="text-sm text-gray-500 dark:text-gray-400">{{ totalUsers }} {{ totalUsers === 1 ? 'account' : 'accounts' }}</span>
+                </div>
                 <Link
                     v-if="currentUser?.role === 'super_admin' || currentUser?.role === 'admin'"
                     :href="route('users.create')"
-                    class="bg-blue-500 hover:bg-blue-600 text-white px-4 py-2 rounded transition"
+                    class="inline-flex items-center gap-2 rounded-lg bg-blue-500 px-4 py-2 text-sm font-semibold text-white shadow transition hover:bg-blue-600 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2"
                 >
-                    + Add User
+                    <span class="text-lg leading-none" aria-hidden="true">+</span>
+                    Add User
                 </Link>
-            </div>
+            </header>
 
-            <!-- Summary Cards (showing formatted role names) -->
-            <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
-                <div class="bg-gradient-to-br from-blue-500 to-indigo-600 text-white rounded-lg p-4 shadow">
-                    <p class="text-sm uppercase tracking-wider opacity-80">Total Users</p>
-                    <p class="text-2xl font-bold">{{ totalUsers }}</p>
+            <section class="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-3" aria-label="Users">
+                <article
+                    v-for="user in users.data"
+                    :key="user.id"
+                    class="flex min-h-52 flex-col rounded-xl border border-gray-200 bg-white p-5 shadow-sm transition hover:shadow-md dark:border-gray-700 dark:bg-gray-800"
+                >
+                    <div class="flex items-start justify-between gap-3">
+                        <div class="flex min-w-0 items-center gap-3">
+                            <div class="relative flex h-12 w-12 shrink-0 items-center justify-center rounded-full border border-gray-200 bg-gray-100 text-base font-bold text-gray-600 dark:border-gray-600 dark:bg-gray-700 dark:text-gray-200">
+                                {{ user.name?.charAt(0)?.toUpperCase() || '?' }}
+                                <img
+                                    v-if="user.avatar_path"
+                                    :src="avatarUrl(user.avatar_path)"
+                                    :alt="`${user.name}'s profile photo`"
+                                    class="absolute h-12 w-12 rounded-full object-cover"
+                                    @error="$event.target.style.display = 'none'"
+                                />
+                            </div>
+                            <div class="min-w-0">
+                                <h2 class="truncate font-semibold text-gray-900 dark:text-white">{{ user.name }}</h2>
+                                <p class="truncate text-sm text-gray-500 dark:text-gray-400">{{ user.email }}</p>
+                            </div>
+                        </div>
+                        <span class="shrink-0 rounded-full px-2.5 py-1 text-xs font-semibold" :class="roleBadgeClass(user.role)">
+                            {{ formatRole(user.role) }}
+                        </span>
+                    </div>
+
+                    <dl class="mt-5 grid grid-cols-2 gap-3 border-t border-gray-100 pt-4 text-sm dark:border-gray-700">
+                        <div>
+                            <dt class="text-xs uppercase text-gray-400">User ID</dt>
+                            <dd class="mt-1 font-medium text-gray-700 dark:text-gray-200">#{{ user.id }}</dd>
+                        </div>
+                        <div>
+                            <dt class="text-xs uppercase text-gray-400">Joined</dt>
+                            <dd class="mt-1 font-medium text-gray-700 dark:text-gray-200">{{ formatDate(user.created_at) }}</dd>
+                        </div>
+                    </dl>
+
+                    <div class="mt-auto flex items-center justify-end gap-3 pt-4">
+                        <Link
+                            v-if="canEdit(user)"
+                            :href="route('users.edit', user.id)"
+                            class="rounded px-2 py-1 text-sm font-medium text-blue-600 hover:bg-blue-50 dark:text-blue-400 dark:hover:bg-blue-900/30"
+                        >
+                            Edit
+                        </Link>
+                        <button
+                            v-if="canDelete(user)"
+                            type="button"
+                            @click="deleteUser(user.id)"
+                            class="rounded px-2 py-1 text-sm font-medium text-red-700 hover:bg-red-50 dark:text-red-400 dark:hover:bg-red-900/30"
+                        >
+                            Delete
+                        </button>
+                        <span v-if="!canEdit(user) && !canDelete(user)" class="text-sm text-gray-400">No actions</span>
+                    </div>
+                </article>
+
+                <div v-if="!users.data || users.data.length === 0" class="col-span-full rounded-xl border border-dashed border-gray-300 bg-white px-6 py-14 text-center shadow-sm dark:border-gray-700 dark:bg-gray-800">
+                    <h2 class="font-semibold text-gray-900 dark:text-white">No users yet</h2>
+                    <p class="mt-1 text-sm text-gray-500 dark:text-gray-400">New accounts will appear here.</p>
                 </div>
-                <div v-for="(count, role) in roleCounts" :key="role"
-                     class="bg-white dark:bg-gray-800 p-4 rounded-lg shadow border border-gray-200 dark:border-gray-700">
-                    <p class="text-sm text-gray-500 dark:text-gray-400">{{ formatRole(role) }}</p>
-                    <p class="text-2xl font-bold">{{ count }}</p>
-                </div>
-            </div>
+            </section>
 
-            <!-- Users Table -->
-            <div class="bg-white dark:bg-gray-800 rounded-lg shadow overflow-hidden">
-                <table class="min-w-full divide-y divide-gray-200 dark:divide-gray-700">
-                    <thead class="bg-gray-50 dark:bg-gray-700">
-                        <tr>
-                            <th class="px-4 py-2 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">ID</th>
-                            <th class="px-4 py-2 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">Name</th>
-                            <th class="px-4 py-2 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">Email</th>
-                            <th class="px-4 py-2 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">Role</th>
-                            <th class="px-4 py-2 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">Created</th>
-                            <th class="px-4 py-2 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">Actions</th>
-                        </tr>
-                    </thead>
-                    <tbody class="divide-y divide-gray-200 dark:divide-gray-700">
-                        <tr v-for="user in users.data" :key="user.id" class="hover:bg-gray-50 dark:hover:bg-gray-700/50 transition">
-                            <td class="px-4 py-2">{{ user.id }}</td>
-                            <td class="px-4 py-2 font-medium">{{ user.name }}</td>
-                            <td class="px-4 py-2">{{ user.email }}</td>
-                            <td class="px-4 py-2">
-                                <span class="px-2 py-1 rounded-full text-xs font-medium capitalize"
-                                      :class="roleBadgeClass(user.role)">
-                                    {{ formatRole(user.role) }}
-                                </span>
-                            </td>
-                            <td class="px-4 py-2">{{ formatDate(user.created_at) }}</td>
-                            <td class="px-4 py-2">
-                                <Link
-                                    v-if="canEdit(user)"
-                                    :href="route('users.edit', user.id)"
-                                    class="text-blue-600 dark:text-blue-400 hover:underline mr-2"
-                                >
-                                    Edit
-                                </Link>
-                                <button
-                                    v-if="canDelete(user)"
-                                    @click="deleteUser(user.id)"
-                                    class="text-red-600 dark:text-red-400 hover:underline"
-                                >
-                                    Delete
-                                </button>
-                                <span v-if="!canEdit(user) && !canDelete(user)" class="text-gray-400 text-sm">—</span>
-                            </td>
-                        </tr>
-                        <tr v-if="!users.data || users.data.length === 0">
-                            <td colspan="6" class="px-4 py-8 text-center text-gray-500">No users found.</td>
-                        </tr>
-                    </tbody>
-                </table>
-            </div>
-
-            <!-- Pagination -->
-            <div v-if="users.links" class="mt-4 flex justify-center space-x-2">
-                <template v-for="link in users.links" :key="link.label">
-                    <button
-                        v-if="link.url"
-                        @click="router.visit(link.url)"
-                        :class="link.active ? 'bg-blue-600 text-white' : 'bg-gray-200 dark:bg-gray-700'"
-                        class="px-3 py-1 rounded-md"
-                        v-html="link.label"
-                    />
-                    <span v-else class="px-3 py-1 rounded-md text-gray-400" v-html="link.label" />
-                </template>
-            </div>
-        </div>
+            <Pagination :links="users.links" />
+        </main>
     </AppLayout>
 </template>

@@ -35,15 +35,6 @@ function submit() {
 
         <div class="p-6 max-w-2xl mx-auto">
 
-            <!-- Breadcrumb -->
-            <div class="text-sm text-gray-500 dark:text-gray-400 mb-2">
-                <Link :href="route('dashboard')" class="hover:underline">Home</Link>
-                <span class="mx-2">›</span>
-                <Link :href="route('misc.index')" class="hover:underline">Miscellaneous</Link>
-                <span class="mx-2">›</span>
-                <span class="font-medium text-gray-700 dark:text-gray-300">Edit</span>
-            </div>
-
             <!-- Header -->
             <div class="flex justify-between items-center mb-4">
                 <h1 class="text-2xl font-bold text-gray-800 dark:text-white">Edit Miscellaneous Transaction</h1>

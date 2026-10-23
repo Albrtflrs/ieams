@@ -157,20 +157,7 @@ const resetSearch = () => {
                 </template>
             </DataTable>
 
-            <!-- Pagination -->
-            <div class="mt-4 flex gap-2">
-                <Link
-                    v-for="link in clients.links"
-                    :key="link.label"
-                    :href="link.url ?? '#'"
-                    v-html="link.label"
-                    class="px-3 py-1 border rounded text-sm"
-                    :class="{
-                        'bg-blue-500 text-white border-blue-500': link.active,
-                        'text-gray-400 cursor-not-allowed pointer-events-none': !link.url
-                    }"
-                />
-            </div>
+            <Pagination :links="clients.links" />
         </div>
     </AppLayout>
 </template>

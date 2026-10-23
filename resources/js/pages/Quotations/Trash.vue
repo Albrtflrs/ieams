@@ -45,7 +45,7 @@ const forceDelete = (id) => {
                             <td class="px-4 py-3">{{ q.client_name || '—' }}</td>
                             <td class="px-4 py-3 font-medium">₱{{ Number(q.total_amount).toLocaleString() }}</td>
                             <td class="px-4 py-3">
-                                <span class="px-2 py-1 rounded-full text-xs font-medium capitalize"
+                                <span class="px-2 py-1 rounded-full text-xs font-medium uppercase"
                                     :class="{
                                         'bg-gray-100 text-gray-800 dark:bg-gray-700 dark:text-gray-300': q.status === 'draft',
                                         'bg-blue-100 text-blue-800 dark:bg-blue-900/30 dark:text-blue-400': q.status === 'sent',
@@ -53,7 +53,7 @@ const forceDelete = (id) => {
                                         'bg-red-100 text-red-800 dark:bg-red-900/30 dark:text-red-400': q.status === 'rejected',
                                         'bg-purple-100 text-purple-800 dark:bg-purple-900/30 dark:text-purple-400': q.status === 'converted',
                                     }">
-                                    {{ q.status }}
+                                    {{ q.status.toUpperCase() }}
                                 </span>
                             </td>
                             <td class="px-4 py-3 text-sm text-gray-500">{{ q.deleted_at }}</td>
@@ -69,19 +69,7 @@ const forceDelete = (id) => {
                 </table>
             </div>
 
-            <!-- Pagination -->
-            <div v-if="quotations.links" class="mt-4 flex justify-center space-x-2">
-                <template v-for="link in quotations.links" :key="link.label">
-                    <button
-                        v-if="link.url"
-                        @click="router.visit(link.url)"
-                        :class="link.active ? 'bg-blue-600 text-white' : 'bg-gray-200 dark:bg-gray-700'"
-                        class="px-3 py-1 rounded-md"
-                        v-html="link.label"
-                    />
-                    <span v-else class="px-3 py-1 rounded-md text-gray-400" v-html="link.label" />
-                </template>
-            </div>
+            <Pagination :links="quotations.links" />
         </div>
     </AppLayout>
 </template>

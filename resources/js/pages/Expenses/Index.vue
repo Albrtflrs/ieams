@@ -46,6 +46,7 @@ function debounce(fn, delay) {
 }
 
 const applyFilter = () => {
+    appliedSearch.value = search.value;
     const params = {
         period: selectedPeriod.value,
         category: selectedCategory.value,
@@ -104,13 +105,6 @@ const statusCounts = computed(() => props.summary.status_counts ?? {
     <AppLayout>
         <div class="p-6">
 
-            <!-- Breadcrumb -->
-            <div class="text-sm text-gray-500 dark:text-gray-400 mb-2">
-                <Link :href="route('dashboard')" class="hover:underline">Home</Link>
-                <span class="mx-2">›</span>
-                <span class="font-medium text-gray-700 dark:text-gray-300">Expenses</span>
-            </div>
-
             <!-- Header -->
             <div class="flex flex-wrap justify-between items-center mb-4">
                 <h1 class="text-2xl font-bold">Expense Transactions</h1>
@@ -140,13 +134,13 @@ const statusCounts = computed(() => props.summary.status_counts ?? {
             <div class="flex flex-wrap items-center gap-3 bg-white dark:bg-gray-800 p-3 rounded-lg shadow mb-4">
                 <span class="text-xs font-semibold uppercase tracking-wider text-gray-500 dark:text-gray-400">Status:</span>
                 <span class="px-3 py-1 rounded-full text-xs font-medium bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-400">
-                    Paid ({{ statusCounts.Paid }})
+                    PAID ({{ statusCounts.Paid }})
                 </span>
                 <span class="px-3 py-1 rounded-full text-xs font-medium bg-gray-100 text-gray-800 dark:bg-gray-700 dark:text-gray-300">
-                    Unpaid ({{ statusCounts.Unpaid }})
+                    UNPAID ({{ statusCounts.Unpaid }})
                 </span>
                 <span class="px-3 py-1 rounded-full text-xs font-medium bg-yellow-100 text-yellow-800 dark:bg-yellow-900/30 dark:text-yellow-400">
-                    Pending ({{ statusCounts.Pending }})
+                    PENDING ({{ statusCounts.Pending }})
                 </span>
             </div>
 
@@ -171,9 +165,9 @@ const statusCounts = computed(() => props.summary.status_counts ?? {
                 </div>
                 <div class="flex items-center gap-2">
                     <label class="text-sm font-medium text-gray-700 dark:text-gray-300">Status:</label>
-                    <select v-model="selectedStatus" class="border rounded-lg px-3 py-1.5 text-sm dark:bg-gray-700">
+                    <select v-model="selectedStatus" class="border rounded-lg px-3 py-1.5 text-sm uppercase dark:bg-gray-700">
                         <option value="">All</option>
-                        <option v-for="s in STATUSES" :key="s" :value="s">{{ s }}</option>
+                        <option v-for="s in STATUSES" :key="s" :value="s">{{ s.toUpperCase() }}</option>
                     </select>
                 </div>
 
@@ -260,9 +254,9 @@ const statusCounts = computed(() => props.summary.status_counts ?? {
                                 ₱{{ (t.amount || 0).toLocaleString() }}
                             </td>
                             <td class="px-4 py-2">
-                                <span class="px-2 py-1 rounded-full text-xs font-medium capitalize"
+                                <span class="px-2 py-1 rounded-full text-xs font-medium uppercase"
                                     :class="statusBadgeClass(t.status)">
-                                    {{ t.status || 'Unpaid' }}
+                                        {{ (t.status || 'Unpaid').toUpperCase() }}
                                 </span>
                             </td>
                             <td class="px-4 py-2">{{ t.receipt_number || '-' }}</td>
@@ -279,15 +273,7 @@ const statusCounts = computed(() => props.summary.status_counts ?? {
             </div>
             <div v-else class="text-center py-8 text-gray-500">No transactions for this period.</div>
 
-            <!-- Pagination -->
-            <div v-if="transactions?.links" class="mt-4 flex justify-center space-x-2">
-                <template v-for="link in transactions.links" :key="link.label">
-                    <button v-if="link.url" @click="router.visit(link.url)"
-                        :class="link.active ? 'bg-blue-600 text-white' : 'bg-gray-200 dark:bg-gray-700'"
-                        class="px-3 py-1 rounded-md" v-html="link.label" />
-                    <span v-else class="px-3 py-1 rounded-md text-gray-400" v-html="link.label" />
-                </template>
-            </div>
+            <Pagination :links="transactions?.links" />
         </div>
     </AppLayout>
 </template>

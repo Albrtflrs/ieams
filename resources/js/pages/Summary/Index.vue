@@ -311,15 +311,6 @@ const getVal = (key) => {
         <Head title="Financial Summary" />
 
         <div class="p-6">
-            <!-- Breadcrumb with inline SVG icon -->
-            <div class="text-sm text-gray-500 dark:text-gray-400 mb-2">
-                <Link :href="route('dashboard')" class="hover:underline">Dashboard</Link>
-                <svg class="w-4 h-4 inline mx-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7" />
-                </svg>
-                <span class="font-medium text-gray-700 dark:text-gray-300">Financial Summary</span>
-            </div>
-
             <!-- Header -->
             <div class="flex flex-wrap justify-between items-center mb-4">
                 <h1 class="text-2xl font-bold">Financial Summary</h1>

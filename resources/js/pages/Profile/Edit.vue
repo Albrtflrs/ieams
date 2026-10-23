@@ -63,13 +63,6 @@ const resetForm = () => {
         <Head title="Profile" />
 
         <div class="p-6">
-            <!-- Breadcrumb (matches Reports page) -->
-            <div class="text-sm text-gray-500 dark:text-gray-400 mb-2">
-                <Link :href="route('dashboard')" class="hover:underline">Dashboard</Link>
-                <span class="mx-2">›</span>
-                <span class="font-medium text-gray-700 dark:text-gray-300">Profile</span>
-            </div>
-
             <h1 class="text-2xl font-bold mb-6">My Profile</h1>
 
             <div v-if="Object.keys(form.errors).length > 0" class="bg-red-50 dark:bg-red-900/30 border border-red-200 dark:border-red-800 rounded-lg p-4 mb-4">

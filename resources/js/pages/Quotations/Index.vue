@@ -162,13 +162,6 @@ const deleteItem = (id) => {
     <AppLayout>
         <div class="p-6">
 
-            <!-- Breadcrumb -->
-            <div class="text-sm text-gray-500 dark:text-gray-400 mb-2">
-                <Link :href="route('dashboard')" class="hover:underline">Home</Link>
-                <span class="mx-2">›</span>
-                <span class="font-medium text-gray-700 dark:text-gray-300">Quotations</span>
-            </div>
-
             <!-- Header -->
             <div class="flex flex-wrap justify-between items-center mb-4">
                 <h1 class="text-2xl font-bold">Quotations</h1>
@@ -224,7 +217,7 @@ const deleteItem = (id) => {
                         class="w-36 border rounded px-3 py-1.5 dark:bg-gray-700 dark:border-gray-600 text-sm"
                     >
                         <option value="">All Statuses</option>
-                        <option v-for="s in statuses" :key="s" :value="s">{{ s }}</option>
+                        <option v-for="s in statuses" :key="s" :value="s">{{ s.toUpperCase() }}</option>
                     </select>
                 </div>
 
@@ -380,19 +373,7 @@ const deleteItem = (id) => {
                 </div>
             </div>
 
-            <!-- ─── Pagination ────────────────────────── -->
-            <div v-if="quotations.links" class="mt-4 flex justify-center space-x-2">
-                <template v-for="link in quotations.links" :key="link.label">
-                    <button
-                        v-if="link.url"
-                        @click="router.visit(link.url)"
-                        :class="link.active ? 'bg-blue-600 text-white' : 'bg-gray-200 dark:bg-gray-700'"
-                        class="px-3 py-1 rounded-md"
-                        v-html="link.label"
-                    />
-                    <span v-else class="px-3 py-1 rounded-md text-gray-400" v-html="link.label" />
-                </template>
-            </div>
+            <Pagination :links="quotations.links" />
         </div>
 
         <!-- ─── Add Item Modal ────────────────────────── -->

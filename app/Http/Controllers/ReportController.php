@@ -106,6 +106,18 @@ class ReportController extends Controller
     }
 
     // ---- Private helper for main report data ----
+    private function applyDateRange($query, string $column, ?Carbon $from, ?Carbon $to)
+    {
+        if ($from) {
+            $query->whereDate($column, '>=', $from->toDateString());
+        }
+        if ($to) {
+            $query->whereDate($column, '<=', $to->toDateString());
+        }
+
+        return $query;
+    }
+
     private function getReportData(Request $request): array
     {
         $period = $request->input('period', 'this_month');
@@ -114,13 +126,17 @@ class ReportController extends Controller
         $supplierId = $request->input('supplier_id');
         $incomeCategory = $request->input('income_category');
         $expenseCategory = $request->input('expense_category');
+        $request->validate([
+            'date_from' => ['nullable', 'date'],
+            'date_to' => ['nullable', 'date', 'after_or_equal:date_from'],
+        ]);
         $dateFrom = $request->input('date_from') ? Carbon::parse($request->input('date_from'))->startOfDay() : null;
         $dateTo = $request->input('date_to') ? Carbon::parse($request->input('date_to'))->endOfDay() : null;
 
         $startDate = null;
         $endDate = null;
 
-        if ($dateFrom && $dateTo) {
+        if ($dateFrom || $dateTo) {
             $startDate = $dateFrom;
             $endDate = $dateTo;
         } else {
@@ -160,12 +176,10 @@ class ReportController extends Controller
         $miscIncomeQuery = MiscellaneousTransaction::where('type', 'income');
         $miscExpenseQuery = MiscellaneousTransaction::where('type', 'expense');
 
-        if ($startDate && $endDate) {
-            $incomeQuery->whereBetween('created_at', [$startDate, $endDate]);
-            $expenseQuery->whereBetween('created_at', [$startDate, $endDate]);
-            $miscIncomeQuery->whereBetween('created_at', [$startDate, $endDate]);
-            $miscExpenseQuery->whereBetween('created_at', [$startDate, $endDate]);
-        }
+        $this->applyDateRange($incomeQuery, 'date_delivered', $startDate, $endDate);
+        $this->applyDateRange($expenseQuery, 'date', $startDate, $endDate);
+        $this->applyDateRange($miscIncomeQuery, 'date', $startDate, $endDate);
+        $this->applyDateRange($miscExpenseQuery, 'date', $startDate, $endDate);
 
         $totalIncome = $incomeQuery->sum('amount_paid') + $miscIncomeQuery->sum('amount');
         $totalExpenses = $expenseQuery->sum('amount') + $miscExpenseQuery->sum('amount');
@@ -192,28 +206,36 @@ class ReportController extends Controller
         $incomeTrend = [];
         $expenseTrend = [];
 
-        if ($startDate && $endDate) {
-            $monthStart = $startDate->copy()->startOfMonth();
-            $monthEnd = $endDate->copy()->endOfMonth();
+        if (($startDate && $endDate) || $dateFrom || $dateTo) {
+            $monthStart = ($startDate ?? $endDate?->copy()->subMonths(11) ?? Carbon::now()->subMonths(11))->copy()->startOfMonth();
+            $monthEnd = ($endDate ?? Carbon::now())->copy()->endOfMonth();
             $current = $monthStart->copy();
             while ($current <= $monthEnd) {
                 $trendMonths[] = $current->format('M Y');
-                $monthStartFilter = $current->startOfMonth();
-                $monthEndFilter = $current->endOfMonth();
+                $monthStartFilter = $current->copy()->startOfMonth();
+                $monthEndFilter = $current->copy()->endOfMonth();
 
-                $inc = IncomeTransaction::where('is_miscellaneous', false)
+                $incQuery = IncomeTransaction::where('is_miscellaneous', false)
                     ->when($clientId, fn($q) => $q->where('client_id', $clientId))
-                    ->when($incomeCategory, fn($q) => $q->where('category', $incomeCategory))
-                    ->whereBetween('created_at', [$monthStartFilter, $monthEndFilter])->sum('amount_paid');
-                $inc += MiscellaneousTransaction::where('type', 'income')
-                    ->whereBetween('created_at', [$monthStartFilter, $monthEndFilter])->sum('amount');
+                    ->when($incomeCategory, fn($q) => $q->where('category', $incomeCategory));
+                $this->applyDateRange($incQuery, 'date_delivered', $monthStartFilter, $monthEndFilter);
+                $this->applyDateRange($incQuery, 'date_delivered', $startDate, $endDate);
+                $inc = $incQuery->sum('amount_paid');
+                $miscIncQuery = MiscellaneousTransaction::where('type', 'income');
+                $this->applyDateRange($miscIncQuery, 'date', $monthStartFilter, $monthEndFilter);
+                $this->applyDateRange($miscIncQuery, 'date', $startDate, $endDate);
+                $inc += $miscIncQuery->sum('amount');
 
-                $exp = ExpenseTransaction::where('is_miscellaneous', false)
+                $expQuery = ExpenseTransaction::where('is_miscellaneous', false)
                     ->when($supplierId, fn($q) => $q->where('supplier_id', $supplierId))
-                    ->when($expenseCategory, fn($q) => $q->where('category', $expenseCategory))
-                    ->whereBetween('created_at', [$monthStartFilter, $monthEndFilter])->sum('amount');
-                $exp += MiscellaneousTransaction::where('type', 'expense')
-                    ->whereBetween('created_at', [$monthStartFilter, $monthEndFilter])->sum('amount');
+                    ->when($expenseCategory, fn($q) => $q->where('category', $expenseCategory));
+                $this->applyDateRange($expQuery, 'date', $monthStartFilter, $monthEndFilter);
+                $this->applyDateRange($expQuery, 'date', $startDate, $endDate);
+                $exp = $expQuery->sum('amount');
+                $miscExpQuery = MiscellaneousTransaction::where('type', 'expense');
+                $this->applyDateRange($miscExpQuery, 'date', $monthStartFilter, $monthEndFilter);
+                $this->applyDateRange($miscExpQuery, 'date', $startDate, $endDate);
+                $exp += $miscExpQuery->sum('amount');
 
                 $incomeTrend[] = $inc;
                 $expenseTrend[] = $exp;
@@ -225,19 +247,23 @@ class ReportController extends Controller
                 $monthStart = Carbon::parse($monthLabel)->startOfMonth();
                 $monthEnd = Carbon::parse($monthLabel)->endOfMonth();
 
-                $inc = IncomeTransaction::where('is_miscellaneous', false)
+                $incQuery = IncomeTransaction::where('is_miscellaneous', false)
                     ->when($clientId, fn($q) => $q->where('client_id', $clientId))
-                    ->when($incomeCategory, fn($q) => $q->where('category', $incomeCategory))
-                    ->whereBetween('created_at', [$monthStart, $monthEnd])->sum('amount_paid');
-                $inc += MiscellaneousTransaction::where('type', 'income')
-                    ->whereBetween('created_at', [$monthStart, $monthEnd])->sum('amount');
+                    ->when($incomeCategory, fn($q) => $q->where('category', $incomeCategory));
+                $this->applyDateRange($incQuery, 'date_delivered', $monthStart, $monthEnd);
+                $inc = $incQuery->sum('amount_paid');
+                $miscIncQuery = MiscellaneousTransaction::where('type', 'income');
+                $this->applyDateRange($miscIncQuery, 'date', $monthStart, $monthEnd);
+                $inc += $miscIncQuery->sum('amount');
 
-                $exp = ExpenseTransaction::where('is_miscellaneous', false)
+                $expQuery = ExpenseTransaction::where('is_miscellaneous', false)
                     ->when($supplierId, fn($q) => $q->where('supplier_id', $supplierId))
-                    ->when($expenseCategory, fn($q) => $q->where('category', $expenseCategory))
-                    ->whereBetween('created_at', [$monthStart, $monthEnd])->sum('amount');
-                $exp += MiscellaneousTransaction::where('type', 'expense')
-                    ->whereBetween('created_at', [$monthStart, $monthEnd])->sum('amount');
+                    ->when($expenseCategory, fn($q) => $q->where('category', $expenseCategory));
+                $this->applyDateRange($expQuery, 'date', $monthStart, $monthEnd);
+                $exp = $expQuery->sum('amount');
+                $miscExpQuery = MiscellaneousTransaction::where('type', 'expense');
+                $this->applyDateRange($miscExpQuery, 'date', $monthStart, $monthEnd);
+                $exp += $miscExpQuery->sum('amount');
 
                 $incomeTrend[] = $inc;
                 $expenseTrend[] = $exp;
@@ -245,8 +271,11 @@ class ReportController extends Controller
         }
 
         // ── Top Clients ────────────────────────────────────
-        $topClientsQuery = Client::withSum(['incomeTransactions' => function($q) use ($startDate, $endDate, $incomeCategory) {
-            if ($startDate && $endDate) $q->whereBetween('created_at', [$startDate, $endDate]);
+        $topClientsQuery = Client::query()
+            ->when($clientId, fn ($query) => $query->whereKey($clientId))
+            ->withSum(['incomeTransactions' => function($q) use ($startDate, $endDate, $incomeCategory) {
+            if ($startDate) $q->whereDate('date_delivered', '>=', $startDate->toDateString());
+            if ($endDate) $q->whereDate('date_delivered', '<=', $endDate->toDateString());
             if ($incomeCategory) $q->where('category', $incomeCategory);
             $q->where('is_miscellaneous', false);
         }], 'amount_paid')
@@ -257,8 +286,11 @@ class ReportController extends Controller
             ->toArray();
 
         // ── Top Suppliers ──────────────────────────────────
-        $topSuppliersQuery = Supplier::withSum(['expenseTransactions' => function($q) use ($startDate, $endDate, $expenseCategory) {
-            if ($startDate && $endDate) $q->whereBetween('created_at', [$startDate, $endDate]);
+        $topSuppliersQuery = Supplier::query()
+            ->when($supplierId, fn ($query) => $query->whereKey($supplierId))
+            ->withSum(['expenseTransactions' => function($q) use ($startDate, $endDate, $expenseCategory) {
+            if ($startDate) $q->whereDate('date', '>=', $startDate->toDateString());
+            if ($endDate) $q->whereDate('date', '<=', $endDate->toDateString());
             if ($expenseCategory) $q->where('category', $expenseCategory);
             $q->where('is_miscellaneous', false);
         }], 'amount')
@@ -269,32 +301,34 @@ class ReportController extends Controller
             ->toArray();
 
         // ── Recent Transactions ────────────────────────────
-        $incomeTx = IncomeTransaction::with('client')
+        $incomeTxQuery = IncomeTransaction::with('client')
             ->when($clientId, fn($q) => $q->where('client_id', $clientId))
             ->when($incomeCategory, fn($q) => $q->where('category', $incomeCategory))
-            ->when($startDate && $endDate, fn($q) => $q->whereBetween('created_at', [$startDate, $endDate]))
             ->where('is_miscellaneous', false)
-            ->orderBy('created_at', 'desc')
+            ->orderBy('date_delivered', 'desc')
             ->limit(50)
-            ->get()
+            ;
+        $this->applyDateRange($incomeTxQuery, 'date_delivered', $startDate, $endDate);
+        $incomeTx = $incomeTxQuery->get()
             ->map(fn($item) => [
-                'date' => $item->created_at->format('Y-m-d'),
+                'date' => $item->date_delivered?->format('Y-m-d'),
                 'client' => $item->client?->name,
                 'particulars' => $item->particulars,
                 'amount' => $item->amount_paid,
                 'type' => 'Income',
             ]);
 
-        $expenseTx = ExpenseTransaction::with('supplier')
+        $expenseTxQuery = ExpenseTransaction::with('supplier')
             ->when($supplierId, fn($q) => $q->where('supplier_id', $supplierId))
             ->when($expenseCategory, fn($q) => $q->where('category', $expenseCategory))
-            ->when($startDate && $endDate, fn($q) => $q->whereBetween('created_at', [$startDate, $endDate]))
             ->where('is_miscellaneous', false)
-            ->orderBy('created_at', 'desc')
+            ->orderBy('date', 'desc')
             ->limit(50)
-            ->get()
+            ;
+        $this->applyDateRange($expenseTxQuery, 'date', $startDate, $endDate);
+        $expenseTx = $expenseTxQuery->get()
             ->map(fn($item) => [
-                'date' => $item->created_at->format('Y-m-d'),
+                'date' => $item->date?->format('Y-m-d'),
                 'client' => $item->supplier?->name,
                 'particulars' => $item->description,
                 'amount' => $item->amount,
@@ -305,7 +339,9 @@ class ReportController extends Controller
 
         // ── Period Label ──────────────────────────────────
         $periodLabel = '';
-        if ($period == 'this_month') {
+        if ($dateFrom || $dateTo) {
+            $periodLabel = ($dateFrom?->format('M d, Y') ?? 'Any time') . ' - ' . ($dateTo?->format('M d, Y') ?? 'Any time');
+        } elseif ($period == 'this_month') {
             $periodLabel = Carbon::parse($selectedMonth . '-01')->format('F Y');
         } elseif ($period == 'last_month') {
             $periodLabel = Carbon::now()->subMonth()->format('F Y');
@@ -316,11 +352,7 @@ class ReportController extends Controller
         } elseif ($period == 'all_time') {
             $periodLabel = 'All Time';
         } else {
-            if ($dateFrom && $dateTo) {
-                $periodLabel = $dateFrom->format('M d, Y') . ' - ' . $dateTo->format('M d, Y');
-            } else {
-                $periodLabel = 'Custom Range';
-            }
+            $periodLabel = 'Custom Range';
         }
 
         // ── Final Return ──────────────────────────────────

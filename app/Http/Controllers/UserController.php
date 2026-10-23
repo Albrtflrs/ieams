@@ -14,12 +14,12 @@ class UserController extends Controller
     {
         $this->authorize('viewAny', User::class);
 
-        $perPage = Setting::get('rows_per_page', 20);
-        $users = User::oldest()->paginate($perPage)
+        $users = User::oldest()->paginate(9)
             ->through(fn($user) => [
                 'id' => $user->id,
                 'name' => $user->name,
                 'email' => $user->email,
+                'avatar_path' => $user->avatar_path,
                 'role' => $user->role, // raw value (super_admin, admin, etc.)
                 'created_at' => $user->created_at->format('Y-m-d'),
             ]);

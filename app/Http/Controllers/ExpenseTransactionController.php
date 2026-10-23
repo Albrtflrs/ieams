@@ -26,7 +26,7 @@ class ExpenseTransactionController extends Controller
             $query->whereBetween('date', [$startDate, $endDate]);
         }
         if ($category !== '') {
-            $query->where('category', $category);
+            $query->whereRaw('TRIM(category) = ?', [trim($category)]);
         }
         if ($status !== '') {
             $query->where('status', $status);
@@ -53,7 +53,8 @@ class ExpenseTransactionController extends Controller
         // ─── Read filters ───────────────────────────────────────
         $period = $request->input('period', 'this_month');
         $selectedMonth = $request->input('month', now()->format('Y-m'));
-        $categoryFilter = $request->input('category', '');
+        $categoryInput = $request->input('category', '');
+        $categoryFilter = is_string($categoryInput) ? $categoryInput : '';
         $statusFilter = $request->input('status', '');
         $search = $request->input('search', '');
 
@@ -128,6 +129,7 @@ class ExpenseTransactionController extends Controller
 
         $transactions = $transactionsQuery->latest()
             ->paginate($perPage)
+            ->withQueryString()
             ->through(fn($item) => [
                 'id'             => $item->id,
                 'date'           => $item->date->format('Y-m-d'),
@@ -142,7 +144,7 @@ class ExpenseTransactionController extends Controller
             ]);
 
         // ─── Category list from settings ──────────────────────
-        $categories = explode(',', Setting::get('default_expense_categories', self::DEFAULT_CATEGORIES));
+        $categories = array_values(array_filter(array_map('trim', explode(',', Setting::get('default_expense_categories', self::DEFAULT_CATEGORIES)))));
 
         return Inertia::render('Expenses/Index', [
             'transactions' => $transactions,

@@ -10,6 +10,8 @@ const props = defineProps({
     months: { type: Array, default: () => [] },
     income_by_month: { type: Array, default: () => [] },
     expense_by_month: { type: Array, default: () => [] },
+    receivables_by_month: { type: Array, default: () => [] },
+    net_profit_by_month: { type: Array, default: () => [] },
     gross_profit_this_month: { type: Number, default: 0 },
     direct_costs_this_month: { type: [Number, String], default: 0 },
     revenue_this_month: { type: [Number, String], default: 0 },
@@ -42,7 +44,8 @@ const toNumber = (val) => {
 };
 
 // ─── Color Palette ────────────────────────────
-const expensePalette = ['#881337', '#9f1239', '#be123c', '#e11d48', '#f43f5e', '#fb7185'];
+const expensePalette = ['#be123c', '#ea580c', '#d97706', '#0f766e', '#2563eb', '#7c3aed', '#db2777', '#475569'];
+const accountingPalette = ['#0f766e', '#2563eb', '#7c3aed', '#db2777', '#d97706', '#0891b2', '#65a30d', '#e11d48'];
 
 // Chart refs
 let incomeExpenseChart = null;
@@ -68,6 +71,89 @@ function getGridColor() { return isDark.value ? '#1e293b' : '#f1f5f9'; }
 
 const incomeByMonthNumbers = computed(() => props.income_by_month.map(toNumber));
 const expenseByMonthNumbers = computed(() => props.expense_by_month.map(toNumber));
+const receivablesByMonthNumbers = computed(() => props.receivables_by_month.map(toNumber));
+const netProfitByMonthNumbers = computed(() => props.net_profit_by_month.map(toNumber));
+
+function signalPoints(values, signed = false) {
+    const samples = values.length ? values : Array(12).fill(0);
+    const quarters = Array.from({ length: 4 }, (_, quarter) => {
+        const segment = samples.slice(quarter * 3, quarter * 3 + 3);
+        return segment.length ? segment.reduce((total, value) => total + value, 0) / segment.length : 0;
+    });
+    const minimum = Math.min(...quarters);
+    const maximum = Math.max(...quarters);
+    const range = maximum - minimum;
+    const maxMagnitude = Math.max(...quarters.map(value => Math.abs(value)));
+    const baseline = signed ? 16 : 24;
+    const points = [`0,${baseline}`];
+
+    quarters.forEach((value, index) => {
+        const start = index * 30;
+        const amplitude = signed
+            ? (maxMagnitude === 0 ? 0 : 0.35 + (Math.abs(value) / maxMagnitude) * 0.65)
+            : (range === 0 ? (maximum === 0 ? 0 : 0.7) : 0.35 + ((value - minimum) / range) * 0.65);
+        const direction = signed && value < 0 ? 1 : -1;
+        const peak = baseline + direction * amplitude * 14;
+        const recovery = baseline - direction * amplitude * 5;
+        points.push(
+            `${start + 3},${baseline}`,
+            `${start + 5},${baseline - direction * amplitude * 2}`,
+            `${start + 7},${baseline}`,
+            `${start + 11},${baseline}`,
+            `${start + 14},${peak}`,
+            `${start + 17},${recovery}`,
+            `${start + 20},${baseline - direction * amplitude * 3}`,
+            `${start + 23},${baseline}`,
+            `${start + 27},${baseline}`,
+            `${start + 30},${baseline}`,
+        );
+    });
+
+    return points.join(' ');
+}
+
+function metricChange(values, lowerIsBetter = false) {
+    if (values.length < 2) {
+        return {
+            percentage: 'No prior month',
+            amount: '',
+            colorClass: 'text-gray-400 dark:text-gray-500',
+        };
+    }
+
+    const previous = values[values.length - 2];
+    const current = values[values.length - 1];
+    const difference = current - previous;
+    const favorable = lowerIsBetter ? difference <= 0 : difference >= 0;
+    const colorClass = favorable ? 'text-emerald-600 dark:text-emerald-400' : 'text-rose-600 dark:text-rose-400';
+
+    if (difference === 0) {
+        return {
+            percentage: '— 0.0%',
+            amount: '₱0.00',
+            colorClass: 'text-gray-400 dark:text-gray-500',
+        };
+    }
+
+    const arrow = difference > 0 ? '▲' : '▼';
+    const movement = lowerIsBetter ? -difference : difference;
+    const amountPrefix = difference > 0 ? '+' : '−';
+
+    if (previous === 0) {
+        return {
+            percentage: `${arrow} New`,
+            amount: `${amountPrefix}${peso(Math.abs(difference))}`,
+            colorClass,
+        };
+    }
+
+    const percentage = (Math.abs(difference) / Math.abs(previous)) * 100;
+    return {
+        percentage: `${arrow} ${percentage.toFixed(1)}%`,
+        amount: `${amountPrefix}${peso(Math.abs(difference))}`,
+        colorClass,
+    };
+}
 
 function initCharts() {
     [incomeExpenseChart, netIncomeChart, expenseCategoryChart, accountingChart].forEach(c => c?.destroy());
@@ -162,7 +248,7 @@ function initCharts() {
     const ctx4 = document.getElementById('accountingChart');
     if (ctx4 && props.accounting_categories.length) {
         const sorted = [...props.accounting_categories].sort((a,b) => b.amount - a.amount);
-        const colors = sorted.map((_, i) => expensePalette[(i + 2) % expensePalette.length]);
+        const colors = sorted.map((_, i) => accountingPalette[i % accountingPalette.length]);
         accountingChart = new Chart(ctx4, {
             type: 'bar',
             data: {
@@ -283,13 +369,6 @@ onMounted(() => initCharts());
 
         <div class="w-full overflow-x-auto space-y-6">
 
-            <!-- Breadcrumb -->
-            <div class="text-sm text-gray-500 dark:text-gray-400">
-                <Link :href="route('dashboard')" class="hover:underline">Home</Link>
-                <span class="mx-2">›</span>
-                <span class="font-medium text-gray-700 dark:text-gray-300">Dashboard</span>
-            </div>
-
             <!-- Fallback banner -->
             <div v-if="fallback.is_fallback" class="bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-800 rounded-lg p-3 flex items-center gap-2 text-amber-700 dark:text-amber-300 text-sm">
                 <svg class="w-5 h-5 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -333,21 +412,13 @@ onMounted(() => initCharts());
                         <div class="min-w-0 flex-1">
                             <p class="text-sm font-medium text-gray-500 dark:text-gray-400 truncate">Revenue</p>
                             <p class="text-2xl font-bold text-emerald-700 dark:text-emerald-300 mt-1 truncate">{{ peso(getVal('revenue_this_month')) }}</p>
-                            <p class="text-xs text-emerald-500 mt-1 truncate">▲ 12.5% from last month</p>
                         </div>
-                        <div class="flex-shrink-0 p-3 rounded-xl bg-emerald-50 dark:bg-emerald-900/20 ml-3">
-                            <svg class="w-6 h-6 text-emerald-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                        <div class="ml-3 flex w-24 shrink-0 flex-col items-end">
+                            <svg class="h-10 w-24 text-emerald-500" viewBox="0 0 120 32" fill="none" role="img" aria-label="Revenue pulse signal">
+                                <polyline :points="signalPoints(incomeByMonthNumbers)" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" />
                             </svg>
-                        </div>
-                    </div>
-                    <div class="mt-3">
-                        <div class="flex justify-between text-xs text-gray-500">
-                            <span>Target</span>
-                            <span>58%</span>
-                        </div>
-                        <div class="w-full h-1.5 bg-gray-200 dark:bg-gray-700 rounded-full mt-1">
-                            <div class="h-1.5 rounded-full bg-emerald-500" style="width: 58%"></div>
+                            <span class="text-xs font-semibold" :class="metricChange(incomeByMonthNumbers).colorClass">{{ metricChange(incomeByMonthNumbers).percentage }}</span>
+                            <span class="max-w-full truncate text-[10px] text-gray-500 dark:text-gray-400">{{ metricChange(incomeByMonthNumbers).amount }}</span>
                         </div>
                     </div>
                 </div>
@@ -358,21 +429,13 @@ onMounted(() => initCharts());
                         <div class="min-w-0 flex-1">
                             <p class="text-sm font-medium text-gray-500 dark:text-gray-400 truncate">Expenses</p>
                             <p class="text-2xl font-bold text-rose-700 dark:text-rose-300 mt-1 truncate">{{ peso(getVal('direct_costs_this_month')) }}</p>
-                            <p class="text-xs text-rose-500 mt-1 truncate">▲ 8.3% from last month</p>
                         </div>
-                        <div class="flex-shrink-0 p-3 rounded-xl bg-rose-50 dark:bg-rose-900/20 ml-3">
-                            <svg class="w-6 h-6 text-rose-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 6h18M9 4v2m6-2v2M5 12h14M7 18h10" />
+                        <div class="ml-3 flex w-24 shrink-0 flex-col items-end">
+                            <svg class="h-10 w-24 text-rose-500" viewBox="0 0 120 32" fill="none" role="img" aria-label="Expense pulse signal">
+                                <polyline :points="signalPoints(expenseByMonthNumbers)" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" />
                             </svg>
-                        </div>
-                    </div>
-                    <div class="mt-3">
-                        <div class="flex justify-between text-xs text-gray-500">
-                            <span>Budget</span>
-                            <span>72%</span>
-                        </div>
-                        <div class="w-full h-1.5 bg-gray-200 dark:bg-gray-700 rounded-full mt-1">
-                            <div class="h-1.5 rounded-full bg-rose-500" style="width: 72%"></div>
+                            <span class="text-xs font-semibold" :class="metricChange(expenseByMonthNumbers, true).colorClass">{{ metricChange(expenseByMonthNumbers, true).percentage }}</span>
+                            <span class="max-w-full truncate text-[10px] text-gray-500 dark:text-gray-400">{{ metricChange(expenseByMonthNumbers, true).amount }}</span>
                         </div>
                     </div>
                 </div>
@@ -383,21 +446,13 @@ onMounted(() => initCharts());
                         <div class="min-w-0 flex-1">
                             <p class="text-sm font-medium text-gray-500 dark:text-gray-400 truncate">Net Profit</p>
                             <p class="text-2xl font-bold text-indigo-700 dark:text-indigo-300 mt-1 truncate">{{ peso(getVal('net_profit_this_month')) }}</p>
-                            <p class="text-xs text-emerald-500 mt-1 truncate">▲ 6.2% from last month</p>
                         </div>
-                        <div class="flex-shrink-0 p-3 rounded-xl bg-indigo-50 dark:bg-indigo-900/20 ml-3">
-                            <svg class="w-6 h-6 text-indigo-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" />
+                        <div class="ml-3 flex w-24 shrink-0 flex-col items-end">
+                            <svg class="h-10 w-24 text-indigo-500" viewBox="0 0 120 32" fill="none" role="img" aria-label="Net profit pulse signal">
+                                <polyline :points="signalPoints(netProfitByMonthNumbers, true)" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" />
                             </svg>
-                        </div>
-                    </div>
-                    <div class="mt-3">
-                        <div class="flex justify-between text-xs text-gray-500">
-                            <span>Target</span>
-                            <span>45%</span>
-                        </div>
-                        <div class="w-full h-1.5 bg-gray-200 dark:bg-gray-700 rounded-full mt-1">
-                            <div class="h-1.5 rounded-full bg-indigo-500" style="width: 45%"></div>
+                            <span class="text-xs font-semibold" :class="metricChange(netProfitByMonthNumbers).colorClass">{{ metricChange(netProfitByMonthNumbers).percentage }}</span>
+                            <span class="max-w-full truncate text-[10px] text-gray-500 dark:text-gray-400">{{ metricChange(netProfitByMonthNumbers).amount }}</span>
                         </div>
                     </div>
                 </div>
@@ -410,21 +465,13 @@ onMounted(() => initCharts());
                             <p class="text-2xl font-bold text-amber-700 dark:text-amber-300 mt-1 truncate">
                                 {{ peso(getVal('receivables_this_month')) }}
                             </p>
-                            <p class="text-xs text-amber-500 mt-1 truncate">▲ 4.3% from last month</p>
                         </div>
-                        <div class="flex-shrink-0 p-3 rounded-xl bg-amber-50 dark:bg-amber-900/20 ml-3">
-                            <svg class="w-6 h-6 text-amber-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                        <div class="ml-3 flex w-24 shrink-0 flex-col items-end">
+                            <svg class="h-10 w-24 text-amber-500" viewBox="0 0 120 32" fill="none" role="img" aria-label="Receivables pulse signal">
+                                <polyline :points="signalPoints(receivablesByMonthNumbers)" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" />
                             </svg>
-                        </div>
-                    </div>
-                    <div class="mt-3">
-                        <div class="flex justify-between text-xs text-gray-500">
-                            <span>Overdue (>30 days)</span>
-                            <span>18%</span>
-                        </div>
-                        <div class="w-full h-1.5 bg-gray-200 dark:bg-gray-700 rounded-full mt-1">
-                            <div class="h-1.5 rounded-full bg-amber-500" style="width: 18%"></div>
+                            <span class="text-xs font-semibold" :class="metricChange(receivablesByMonthNumbers, true).colorClass">{{ metricChange(receivablesByMonthNumbers, true).percentage }}</span>
+                            <span class="max-w-full truncate text-[10px] text-gray-500 dark:text-gray-400">{{ metricChange(receivablesByMonthNumbers, true).amount }}</span>
                         </div>
                     </div>
                 </div>

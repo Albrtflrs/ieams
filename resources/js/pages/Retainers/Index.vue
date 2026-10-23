@@ -41,13 +41,6 @@ const servicesList = (services) => {
     <AppLayout>
         <div class="p-6">
 
-            <!-- Breadcrumb -->
-            <div class="text-sm text-gray-500 dark:text-gray-400 mb-2">
-                <Link :href="route('dashboard')" class="hover:underline">Home</Link>
-                <span class="mx-2">›</span>
-                <span class="font-medium text-gray-700 dark:text-gray-300">Retainers</span>
-            </div>
-
             <!-- Header -->
             <div class="flex flex-wrap justify-between items-center mb-4">
                 <h1 class="text-2xl font-bold">Retainers</h1>
@@ -130,9 +123,9 @@ const servicesList = (services) => {
                             <td class="px-4 py-2">{{ r.sla_tier || '—' }}</td>
                             <td class="px-4 py-2 text-xs">{{ servicesList(r.services) }}</td>
                             <td class="px-4 py-2">
-                                <span class="px-2 py-1 rounded-full text-xs font-medium capitalize"
+                                <span class="px-2 py-1 rounded-full text-xs font-medium uppercase"
                                     :class="statusColors[r.status]">
-                                    {{ r.status }}
+                                    {{ r.status.toUpperCase() }}
                                 </span>
                             </td>
                             <td class="px-4 py-2">
@@ -147,19 +140,7 @@ const servicesList = (services) => {
                 </table>
             </div>
 
-            <!-- Pagination -->
-            <div v-if="retainers.links" class="mt-4 flex justify-center space-x-2">
-                <template v-for="link in retainers.links" :key="link.label">
-                    <button
-                        v-if="link.url"
-                        @click="router.visit(link.url)"
-                        :class="link.active ? 'bg-blue-600 text-white' : 'bg-gray-200 dark:bg-gray-700'"
-                        class="px-3 py-1 rounded-md"
-                        v-html="link.label"
-                    />
-                    <span v-else class="px-3 py-1 rounded-md text-gray-400" v-html="link.label" />
-                </template>
-            </div>
+            <Pagination :links="retainers.links" />
         </div>
     </AppLayout>
 </template>

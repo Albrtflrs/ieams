@@ -188,3 +188,71 @@
         @apply px-6 py-3 text-base;
     }
 }
+
+html.teal {
+    --background: #f0fdfa;
+    --foreground: #134e4a;
+    --card: #ffffff;
+    --card-foreground: #134e4a;
+    --popover: #ffffff;
+    --popover-foreground: #134e4a;
+    --primary: #0f766e;
+    --primary-foreground: #ffffff;
+    --secondary: #ccfbf1;
+    --secondary-foreground: #134e4a;
+    --muted: #e6fffb;
+    --muted-foreground: #527a75;
+    --accent: #ccfbf1;
+    --accent-foreground: #134e4a;
+    --border: #b7e4dc;
+    --input: #b7e4dc;
+    --ring: #14b8a6;
+    --sidebar-background: #f0fdfa;
+    --sidebar-foreground: #134e4a;
+    --sidebar-primary: #0f766e;
+    --sidebar-primary-foreground: #ffffff;
+    --sidebar-accent: #ccfbf1;
+    --sidebar-accent-foreground: #134e4a;
+    --sidebar-border: #b7e4dc;
+    --sidebar-ring: #14b8a6;
+}
+
+.theme-teal-canvas {
+    background-image: linear-gradient(to bottom right, #ecfdfb, #cffafe);
+}
+
+.theme-light-canvas {
+    background-color: #ffffff !important;
+    background-image: none !important;
+}
+
+html.teal .bg-emerald-500,
+html.teal .bg-emerald-600,
+html.teal .bg-primary {
+    background-color: #0f766e !important;
+}
+
+html.teal .hover\:bg-emerald-600:hover,
+html.teal .hover\:bg-emerald-700:hover {
+    background-color: #115e59 !important;
+}
+
+html.teal .bg-emerald-50,
+html.teal .bg-emerald-50\/50,
+html.teal .bg-emerald-50\/80 {
+    background-color: #ccfbf1 !important;
+}
+
+html.teal .text-emerald-500,
+html.teal .text-emerald-600,
+html.teal .text-emerald-700 {
+    color: #0f766e !important;
+}
+
+html.teal .hover\:text-emerald-700:hover {
+    color: #115e59 !important;
+}
+
+html.teal .border-emerald-600 {
+    border-color: #0f766e !important;
+}

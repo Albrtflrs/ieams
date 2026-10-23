@@ -47,6 +47,29 @@ const selectedIncomeCategory = ref(props.filters?.income_category || '');
 const selectedExpenseCategory = ref(props.filters?.expense_category || '');
 const dateFrom = ref(props.filters?.date_from || '');
 const dateTo = ref(props.filters?.date_to || '');
+const appliedFilters = computed(() => {
+    const filters = props.filters || {};
+    const periodLabels = {
+        this_month: 'This Month',
+        last_month: 'Last Month',
+        this_year: 'This Year',
+        last_12_months: 'Last 12 Months',
+        all_time: 'All Time',
+    };
+    const selectedClientOption = props.filterOptions?.clients?.find((client) => String(client.id) === String(filters.client_id));
+    const selectedSupplierOption = props.filterOptions?.suppliers?.find((supplier) => String(supplier.id) === String(filters.supplier_id));
+    const active = [{ label: 'Period', value: periodLabels[props.period] || props.period }];
+
+    if (props.period === 'this_month' && props.month) active.push({ label: 'Month', value: props.month });
+    if (selectedClientOption) active.push({ label: 'Client', value: selectedClientOption.name });
+    if (selectedSupplierOption) active.push({ label: 'Supplier', value: selectedSupplierOption.name });
+    if (filters.income_category) active.push({ label: 'Income category', value: filters.income_category });
+    if (filters.expense_category) active.push({ label: 'Expense category', value: filters.expense_category });
+    if (filters.date_from) active.push({ label: 'From', value: filters.date_from });
+    if (filters.date_to) active.push({ label: 'To', value: filters.date_to });
+
+    return active;
+});
 
 const applyFilter = () => {
     const params = {
@@ -181,13 +204,6 @@ onMounted(() => {
         <Head title="Reports" />
 
         <div class="p-6">
-            <!-- 👇 Breadcrumb (matches Summary page) -->
-            <div class="text-sm text-gray-500 dark:text-gray-400 mb-2">
-                <Link :href="route('dashboard')" class="hover:underline">Dashboard</Link>
-                <span class="mx-2">›</span>
-                <span class="font-medium text-gray-700 dark:text-gray-300">Reports</span>
-            </div>
-
             <!-- Header -->
             <div class="flex flex-wrap justify-between items-center gap-4 mb-6">
                 <h1 class="text-2xl font-bold flex items-center gap-2">
@@ -276,6 +292,13 @@ onMounted(() => {
                     </div>
                 </div>
             </div>
+
+            <section class="mb-6 flex flex-wrap items-center gap-2" aria-label="Applied report filters">
+                <span class="mr-1 text-sm font-semibold text-gray-600 dark:text-gray-300">Showing:</span>
+                <span v-for="filter in appliedFilters" :key="filter.label" class="inline-flex items-center gap-1 rounded-md border border-emerald-200 bg-emerald-50 px-2.5 py-1 text-xs text-emerald-900 dark:border-emerald-800 dark:bg-emerald-900/30 dark:text-emerald-200">
+                    <span class="font-semibold">{{ filter.label }}:</span> {{ filter.value }}
+                </span>
+            </section>
 
             <!-- Summary Cards -->
             <div class="grid grid-cols-1 sm:grid-cols-3 gap-4 mb-8">

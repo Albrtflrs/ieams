@@ -37,15 +37,6 @@ const exportCSV = () => {
 <template>
     <AppLayout>
         <div class="p-6 max-w-5xl mx-auto">
-            <!-- Breadcrumbs -->
-            <div class="text-sm text-gray-500 dark:text-gray-400 mb-2">
-                <Link :href="route('dashboard')" class="hover:underline">Home</Link>
-                <span class="mx-2">›</span>
-                <Link :href="route('quotations.index')" class="hover:underline">Quotations</Link>
-                <span class="mx-2">›</span>
-                <span class="font-medium text-gray-700 dark:text-gray-300">View</span>
-            </div>
-
             <div class="flex justify-between items-center mb-4">
                 <h1 class="text-2xl font-bold text-gray-800 dark:text-white">
                     Quotation #{{ quotation.quotation_number }}
@@ -96,7 +87,7 @@ const exportCSV = () => {
                     </div>
                     <div>
                         <label class="block text-sm font-medium text-gray-500 dark:text-gray-400">Status</label>
-                        <span class="px-2 py-1 rounded-full text-xs font-medium capitalize"
+                        <span class="px-2 py-1 rounded-full text-xs font-medium uppercase"
                               :class="{
                                   'bg-gray-100 text-gray-800': quotation.status === 'draft',
                                   'bg-blue-100 text-blue-800': quotation.status === 'sent',
@@ -105,7 +96,7 @@ const exportCSV = () => {
                                   'bg-yellow-100 text-yellow-800': quotation.status === 'expired',
                                   'bg-purple-100 text-purple-800': quotation.status === 'converted',
                               }">
-                            {{ quotation.status }}
+                            {{ quotation.status.toUpperCase() }}
                         </span>
                     </div>
                 </div>

@@ -184,17 +184,6 @@ const submit = () => {
         <Head :title="isEdit ? 'Edit Quotation' : 'New Quotation'" />
 
         <div class="p-6 max-w-5xl mx-auto">
-            <!-- Breadcrumbs -->
-            <div class="text-sm text-gray-500 dark:text-gray-400 mb-2">
-                <Link :href="route('dashboard')" class="hover:underline">Home</Link>
-                <span class="mx-2">›</span>
-                <Link :href="route('quotations.index')" class="hover:underline">Quotations</Link>
-                <span class="mx-2">›</span>
-                <span class="font-medium text-gray-700 dark:text-gray-300">
-                    {{ isEdit ? 'Edit' : 'Create' }}
-                </span>
-            </div>
-
             <div class="flex justify-between items-center mb-4">
                 <h1 class="text-2xl font-bold text-gray-800 dark:text-white">
                     {{ isEdit ? 'Edit Quotation' : 'New Quotation' }}
@@ -370,7 +359,7 @@ const submit = () => {
                 <!-- Status -->
                 <div>
                     <label class="block text-sm font-medium text-gray-700 dark:text-gray-300">Status</label>
-                    <select v-model="form.status" class="w-full border rounded-lg px-3 py-2 dark:bg-gray-700 dark:border-gray-600">
+                    <select v-model="form.status" class="w-full border rounded-lg px-3 py-2 uppercase dark:bg-gray-700 dark:border-gray-600">
                         <option value="draft">Draft</option>
                         <option value="sent">Sent</option>
                         <option value="accepted">Accepted</option>

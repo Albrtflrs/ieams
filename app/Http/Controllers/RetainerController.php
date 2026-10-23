@@ -29,6 +29,7 @@ class RetainerController extends Controller
             ->through(fn($item) => [
                 'id' => $item->id,
                 'reference_number' => $item->reference_number,
+                'client_id' => $item->client_id,
                 'client_name' => $item->client?->name,
                 'total_amount' => $item->total_amount,
                 'used_amount' => $item->used_amount,

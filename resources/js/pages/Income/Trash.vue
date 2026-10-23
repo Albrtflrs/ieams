@@ -56,19 +56,7 @@ const forceDelete = (id) => {
                 </table>
             </div>
 
-            <!-- Pagination -->
-            <div v-if="transactions.links" class="mt-4 flex justify-center space-x-2">
-                <template v-for="link in transactions.links" :key="link.label">
-                    <button
-                        v-if="link.url"
-                        @click="router.visit(link.url)"
-                        :class="link.active ? 'bg-blue-600 text-white' : 'bg-gray-200 dark:bg-gray-700'"
-                        class="px-3 py-1 rounded-md"
-                        v-html="link.label"
-                    />
-                    <span v-else class="px-3 py-1 rounded-md text-gray-400" v-html="link.label" />
-                </template>
-            </div>
+            <Pagination :links="transactions.links" />
         </div>
     </AppLayout>
 </template>

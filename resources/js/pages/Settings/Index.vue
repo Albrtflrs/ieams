@@ -87,13 +87,6 @@ const paymentTerms = ['Due on receipt', 'Net 15', 'Net 30', 'Net 60'];
         <Head title="Settings" />
 
         <div class="p-6">
-            <!-- Breadcrumb (matches Reports & Profile) -->
-            <div class="text-sm text-gray-500 dark:text-gray-400 mb-2">
-                <Link :href="route('dashboard')" class="hover:underline">Dashboard</Link>
-                <span class="mx-2">›</span>
-                <span class="font-medium text-gray-700 dark:text-gray-300">Settings</span>
-            </div>
-
             <h1 class="text-2xl font-bold mb-6">Settings</h1>
 
             <form @submit.prevent="submit" class="bg-white dark:bg-gray-800 rounded-xl shadow p-6 space-y-6 max-w-4xl">

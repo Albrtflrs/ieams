@@ -78,6 +78,8 @@ class DashboardController extends Controller
 
         $incomeByMonth = [];
         $expenseByMonth = [];
+        $receivablesByMonth = [];
+        $netProfitByMonth = [];
 
         foreach ($months as $index => $monthLabel) {
             $monthStart = Carbon::parse($monthLabel)->startOfMonth();
@@ -91,8 +93,18 @@ class DashboardController extends Controller
                 ->where('is_miscellaneous', false)
                 ->sum('amount');
 
+            $receivables = (float) IncomeTransaction::whereBetween('created_at', [$monthStart, $monthEnd])
+                ->whereIn('status', ['Unpaid', 'Cash On Hold'])
+                ->sum(DB::raw('gross_price - amount_paid'));
+
+            $operatingExpenses = (float) MiscellaneousTransaction::whereBetween('created_at', [$monthStart, $monthEnd])
+                ->where('type', 'expense')
+                ->sum('amount');
+
             $incomeByMonth[] = $inc;
             $expenseByMonth[] = $exp;
+            $receivablesByMonth[] = $receivables;
+            $netProfitByMonth[] = $inc - $exp - $operatingExpenses;
         }
 
         // ---- 4. Expense categories (for bar chart) ----
@@ -199,6 +211,8 @@ class DashboardController extends Controller
             'months' => $months,
             'income_by_month' => array_map('floatval', $incomeByMonth),
             'expense_by_month' => array_map('floatval', $expenseByMonth),
+            'receivables_by_month' => array_map('floatval', $receivablesByMonth),
+            'net_profit_by_month' => array_map('floatval', $netProfitByMonth),
             'expense_categories' => $expenseCategories,
             'accounting_categories' => $accountingCategories,
             'recent_transactions' => $recentTransactions,

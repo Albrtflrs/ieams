@@ -158,13 +158,6 @@ const clearSearch = () => {
     <AppLayout>
         <div class="p-6 space-y-6">
 
-            <!-- Breadcrumb -->
-            <div class="text-sm text-gray-500 dark:text-gray-400 mb-2">
-                <Link :href="route('dashboard')" class="hover:underline">Home</Link>
-                <span class="mx-2">›</span>
-                <span class="font-medium text-gray-700 dark:text-gray-300">Income</span>
-            </div>
-
             <!-- Header -->
             <div class="flex flex-wrap justify-between items-center gap-2">
                 <h1 class="text-2xl font-bold">Income Transactions</h1>
@@ -252,17 +245,17 @@ const clearSearch = () => {
             <!-- Status badges -->
             <div class="flex flex-wrap items-center gap-3 bg-white dark:bg-gray-800 p-3 rounded-lg shadow">
                 <span class="text-xs font-semibold uppercase tracking-wider text-gray-500 dark:text-gray-400">Status:</span>
-                <span class="px-3 py-1 rounded-full text-xs font-medium bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-400">
-                    Paid ({{ statusCounts.Paid }})
+                        <span class="px-3 py-1 rounded-full text-xs font-medium uppercase bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-400">
+                    PAID ({{ statusCounts.Paid }})
                 </span>
-                <span class="px-3 py-1 rounded-full text-xs font-medium bg-gray-100 text-gray-800 dark:bg-gray-700 dark:text-gray-300">
-                    Unpaid ({{ statusCounts.Unpaid }})
+                        <span class="px-3 py-1 rounded-full text-xs font-medium uppercase bg-gray-100 text-gray-800 dark:bg-gray-700 dark:text-gray-300">
+                    UNPAID ({{ statusCounts.Unpaid }})
                 </span>
-                <span class="px-3 py-1 rounded-full text-xs font-medium bg-red-100 text-red-800 dark:bg-red-900/30 dark:text-red-400">
-                    Cash On Hold ({{ statusCounts['Cash On Hold'] }})
+                        <span class="px-3 py-1 rounded-full text-xs font-medium uppercase bg-red-100 text-red-800 dark:bg-red-900/30 dark:text-red-400">
+                    CASH ON HOLD ({{ statusCounts['Cash On Hold'] }})
                 </span>
-                <span class="px-3 py-1 rounded-full text-xs font-medium bg-purple-100 text-purple-800 dark:bg-purple-900/30 dark:text-purple-400">
-                    Paid Royalty ({{ statusCounts['Paid Royalty'] }})
+                        <span class="px-3 py-1 rounded-full text-xs font-medium uppercase bg-purple-100 text-purple-800 dark:bg-purple-900/30 dark:text-purple-400">
+                    PAID ROYALTY ({{ statusCounts['Paid Royalty'] }})
                 </span>
             </div>
 
@@ -277,9 +270,9 @@ const clearSearch = () => {
                 </div>
                 <div class="flex items-center gap-2">
                     <label class="text-sm font-medium text-gray-700 dark:text-gray-300">Status:</label>
-                    <select v-model="selectedStatus" class="border rounded px-3 py-1.5 dark:bg-gray-700">
+                    <select v-model="selectedStatus" class="border rounded px-3 py-1.5 uppercase dark:bg-gray-700">
                         <option value="">All</option>
-                        <option v-for="s in STATUSES" :key="s" :value="s">{{ s }}</option>
+                        <option v-for="s in STATUSES" :key="s" :value="s">{{ s.toUpperCase() }}</option>
                     </select>
                 </div>
                 <div class="flex items-center gap-2">
@@ -370,9 +363,9 @@ const clearSearch = () => {
                         </span>
                     </template>
                     <template #column-status="{ value }">
-                        <span class="px-2 py-1 rounded-full text-xs font-medium capitalize"
+                            <span class="px-2 py-1 rounded-full text-xs font-medium uppercase"
                               :class="statusBadgeClass(value)">
-                            {{ value || 'Unpaid' }}
+                            {{ (value || 'Unpaid').toUpperCase() }}
                         </span>
                     </template>
                     <template #column-withdrawn="{ value }">
@@ -387,19 +380,7 @@ const clearSearch = () => {
                 </DataTable>
             </div>
 
-            <!-- Pagination -->
-            <div v-if="transactions.links" class="mt-4 flex justify-center space-x-2">
-                <template v-for="link in transactions.links" :key="link.label">
-                    <button
-                        v-if="link.url"
-                        @click="router.visit(link.url)"
-                        :class="link.active ? 'bg-primary text-primary-foreground' : 'bg-gray-200 dark:bg-gray-700'"
-                        class="px-3 py-1 rounded-md"
-                        v-html="link.label"
-                    />
-                    <span v-else class="px-3 py-1 rounded-md text-gray-400" v-html="link.label" />
-                </template>
-            </div>
+            <Pagination :links="transactions.links" />
         </div>
     </AppLayout>
 </template>

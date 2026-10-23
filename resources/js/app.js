@@ -3,6 +3,7 @@ import { createInertiaApp, router } from '@inertiajs/vue3';
 import { resolvePageComponent } from 'laravel-vite-plugin/inertia-helpers';
 import { ZiggyVue } from 'ziggy-js';
 import { toastBus } from './eventBus';
+import Pagination from './Components/Pagination.vue';
 
 createInertiaApp({
     title: (title) => `${title} - Accounting`,
@@ -10,8 +11,10 @@ createInertiaApp({
     setup({ el, App, props, plugin }) {
         const app = createApp({ render: () => h(App, props) })
             .use(plugin)
-            .use(ZiggyVue)
-            .mount(el);
+            .use(ZiggyVue);
+
+        app.component('Pagination', Pagination);
+        app.mount(el);
 
         // ---- Toast flash messages ----
         router.on('success', (event) => {

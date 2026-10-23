@@ -51,13 +51,13 @@ const forceDelete = (id) => {
                                 ₱{{ Number(r.remaining_balance).toLocaleString() }}
                             </td>
                             <td class="px-4 py-3">
-                                <span class="px-2 py-1 rounded-full text-xs font-medium capitalize"
+                                <span class="px-2 py-1 rounded-full text-xs font-medium uppercase"
                                     :class="{
                                         'bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-400': r.status === 'active',
                                         'bg-yellow-100 text-yellow-800 dark:bg-yellow-900/30 dark:text-yellow-400': r.status === 'used_up',
                                         'bg-red-100 text-red-800 dark:bg-red-900/30 dark:text-red-400': r.status === 'expired',
                                     }">
-                                    {{ r.status }}
+                                    {{ r.status.toUpperCase() }}
                                 </span>
                             </td>
                             <td class="px-4 py-3 text-sm text-gray-500">{{ r.deleted_at }}</td>
@@ -73,19 +73,7 @@ const forceDelete = (id) => {
                 </table>
             </div>
 
-            <!-- Pagination -->
-            <div v-if="retainers.links" class="mt-4 flex justify-center space-x-2">
-                <template v-for="link in retainers.links" :key="link.label">
-                    <button
-                        v-if="link.url"
-                        @click="router.visit(link.url)"
-                        :class="link.active ? 'bg-blue-600 text-white' : 'bg-gray-200 dark:bg-gray-700'"
-                        class="px-3 py-1 rounded-md"
-                        v-html="link.label"
-                    />
-                    <span v-else class="px-3 py-1 rounded-md text-gray-400" v-html="link.label" />
-                </template>
-            </div>
+            <Pagination :links="retainers.links" />
         </div>
     </AppLayout>
 </template>

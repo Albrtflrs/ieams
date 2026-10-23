@@ -36,15 +36,6 @@ function submit() {
 
         <div class="p-6 max-w-2xl mx-auto">
 
-            <!-- Breadcrumb -->
-            <div class="text-sm text-gray-500 dark:text-gray-400 mb-2">
-                <Link :href="route('dashboard')" class="hover:underline">Home</Link>
-                <span class="mx-2">›</span>
-                <Link :href="route('expenses.index')" class="hover:underline">Expenses</Link>
-                <span class="mx-2">›</span>
-                <span class="font-medium text-gray-700 dark:text-gray-300">Edit</span>
-            </div>
-
             <!-- Header -->
             <div class="flex justify-between items-center mb-4">
                 <h1 class="text-2xl font-bold text-gray-800 dark:text-white">Edit Expense</h1>
@@ -109,7 +100,7 @@ function submit() {
 
                 <div>
                     <label class="block text-sm font-medium text-gray-700 dark:text-gray-300">Status *</label>
-                    <select v-model="form.status" class="w-full border rounded-lg px-3 py-2 dark:bg-gray-700 dark:border-gray-600">
+                    <select v-model="form.status" class="w-full border rounded-lg px-3 py-2 uppercase dark:bg-gray-700 dark:border-gray-600">
                         <option value="Unpaid">Unpaid</option>
                         <option value="Pending">Pending</option>
                         <option value="Paid">Paid</option>

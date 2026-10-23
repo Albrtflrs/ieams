@@ -34,12 +34,13 @@ function debounce(fn, delay) {
 
 // ─── Apply filters ──────────────────────────
 const applyFilters = () => {
-    const params = new URLSearchParams();
+    appliedSearch.value = filters.value.search;
+    const params = {};
     Object.keys(filters.value).forEach(key => {
         const value = key === 'search' ? appliedSearch.value : filters.value[key];
-        if (value) params.append(key, value);
+        if (value) params[key] = value;
     });
-    router.get(route('misc.index'), params.toString(), {
+    router.get(route('misc.index'), params, {
         preserveState: true,
         preserveScroll: true,
         replace: true,
@@ -87,13 +88,6 @@ const deleteMisc = (id, event) => {
 <template>
     <AppLayout>
         <div class="p-6">
-
-            <!-- Breadcrumb -->
-            <div class="text-sm text-gray-500 dark:text-gray-400 mb-2">
-                <Link :href="route('dashboard')" class="hover:underline">Home</Link>
-                <span class="mx-2">›</span>
-                <span class="font-medium text-gray-700 dark:text-gray-300">Miscellaneous</span>
-            </div>
 
             <!-- Header -->
             <div class="flex flex-wrap justify-between items-center mb-4">
@@ -208,19 +202,7 @@ const deleteMisc = (id, event) => {
                 </table>
             </div>
 
-            <!-- ─── Pagination ────────────────────────────── -->
-            <div v-if="transactions.links" class="mt-4 flex justify-center space-x-2">
-                <template v-for="link in transactions.links" :key="link.label">
-                    <button
-                        v-if="link.url"
-                        @click="router.visit(link.url)"
-                        :class="link.active ? 'bg-blue-600 text-white' : 'bg-gray-200 dark:bg-gray-700'"
-                        class="px-3 py-1 rounded-md"
-                        v-html="link.label"
-                    />
-                    <span v-else class="px-3 py-1 rounded-md text-gray-400" v-html="link.label" />
-                </template>
-            </div>
+            <Pagination :links="transactions.links" />
         </div>
     </AppLayout>
 </template>

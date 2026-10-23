@@ -137,15 +137,6 @@ const payableAgingSafe = computed(() => props.payableAging || { '0_30': 0, '31_6
     <AppLayout>
         <div class="p-4 md:p-6">
 
-            <!-- Breadcrumb with icon -->
-            <div class="text-sm text-gray-500 dark:text-gray-400 mb-2">
-                <Link :href="route('dashboard')" class="hover:underline">Home</Link>
-                <svg class="w-4 h-4 inline mx-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7" />
-                </svg>
-                <span class="font-medium text-gray-700 dark:text-gray-300">Receivables &amp; Payables</span>
-            </div>
-
             <!-- Header -->
             <div class="flex flex-wrap justify-between items-center mb-4">
                 <div>
@@ -248,7 +239,7 @@ const payableAgingSafe = computed(() => props.payableAging || { '0_30': 0, '31_6
                             placeholder="Search client..."
                             class="border rounded px-2 py-1 text-sm dark:bg-gray-700 dark:border-gray-600 flex-1 min-w-[100px]"
                         />
-                        <select v-model="receivableFilters.status" class="border rounded px-2 py-1 text-sm dark:bg-gray-700 dark:border-gray-600">
+                        <select v-model="receivableFilters.status" class="border rounded px-2 py-1 text-sm uppercase dark:bg-gray-700 dark:border-gray-600">
                             <option value="">All Status</option>
                             <option value="Unpaid">Unpaid</option>
                             <option value="Cash On Hold">Cash On Hold</option>
@@ -276,8 +267,8 @@ const payableAgingSafe = computed(() => props.payableAging || { '0_30': 0, '31_6
                                         </span>
                                     </td>
                                     <td class="px-3 py-1.5">
-                                        <span class="px-1.5 py-0.5 rounded-full text-xs font-medium capitalize" :class="statusBadgeClass(r.status)">
-                                            {{ r.status }}
+                                        <span class="px-1.5 py-0.5 rounded-full text-xs font-medium uppercase" :class="statusBadgeClass(r.status)">
+                                            {{ r.status.toUpperCase() }}
                                         </span>
                                     </td>
                                 </tr>
@@ -289,15 +280,8 @@ const payableAgingSafe = computed(() => props.payableAging || { '0_30': 0, '31_6
                     </div>
                     <div class="px-3 py-1.5 bg-gray-50 dark:bg-gray-800 border-t border-gray-200 dark:border-gray-700 text-xs text-gray-500 flex justify-between items-center">
                         <span>{{ receivables.total }} records</span>
-                        <div class="flex gap-1">
-                            <button v-for="link in receivables.links" :key="link.label"
-                                    @click="router.visit(link.url)"
-                                    v-html="link.label"
-                                    class="px-2 py-0.5 rounded border dark:border-gray-600"
-                                    :class="{'bg-blue-500 text-white border-blue-500': link.active, 'text-gray-400 cursor-not-allowed pointer-events-none': !link.url}"
-                            />
-                        </div>
                     </div>
+                    <Pagination :links="receivables.links" />
                 </div>
 
                 <!-- ─── Payables Table ─────────────────────────── -->
@@ -313,7 +297,7 @@ const payableAgingSafe = computed(() => props.payableAging || { '0_30': 0, '31_6
                             placeholder="Search supplier..."
                             class="border rounded px-2 py-1 text-sm dark:bg-gray-700 dark:border-gray-600 flex-1 min-w-[100px]"
                         />
-                        <select v-model="payableFilters.status" class="border rounded px-2 py-1 text-sm dark:bg-gray-700 dark:border-gray-600">
+                        <select v-model="payableFilters.status" class="border rounded px-2 py-1 text-sm uppercase dark:bg-gray-700 dark:border-gray-600">
                             <option value="">All Status</option>
                             <option value="Unpaid">Unpaid</option>
                             <option value="Pending">Pending</option>
@@ -341,8 +325,8 @@ const payableAgingSafe = computed(() => props.payableAging || { '0_30': 0, '31_6
                                         </span>
                                     </td>
                                     <td class="px-3 py-1.5">
-                                        <span class="px-1.5 py-0.5 rounded-full text-xs font-medium capitalize" :class="statusBadgeClass(p.status)">
-                                            {{ p.status }}
+                                        <span class="px-1.5 py-0.5 rounded-full text-xs font-medium uppercase" :class="statusBadgeClass(p.status)">
+                                            {{ p.status.toUpperCase() }}
                                         </span>
                                     </td>
                                 </tr>
@@ -354,15 +338,8 @@ const payableAgingSafe = computed(() => props.payableAging || { '0_30': 0, '31_6
                     </div>
                     <div class="px-3 py-1.5 bg-gray-50 dark:bg-gray-800 border-t border-gray-200 dark:border-gray-700 text-xs text-gray-500 flex justify-between items-center">
                         <span>{{ payables.total }} records</span>
-                        <div class="flex gap-1">
-                            <button v-for="link in payables.links" :key="link.label"
-                                    @click="router.visit(link.url)"
-                                    v-html="link.label"
-                                    class="px-2 py-0.5 rounded border dark:border-gray-600"
-                                    :class="{'bg-blue-500 text-white border-blue-500': link.active, 'text-gray-400 cursor-not-allowed pointer-events-none': !link.url}"
-                            />
-                        </div>
                     </div>
+                    <Pagination :links="payables.links" />
                 </div>
             </div>
 

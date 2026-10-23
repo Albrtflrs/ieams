@@ -58,15 +58,6 @@ const submit = () => {
     <AppLayout>
         <div class="p-6 max-w-2xl">
 
-            <!-- Breadcrumb -->
-            <div class="text-sm text-gray-500 dark:text-gray-400 mb-2">
-                <Link :href="route('dashboard')" class="hover:underline">Home</Link>
-                <span class="mx-2">›</span>
-                <Link :href="route('income.index')" class="hover:underline">Income</Link>
-                <span class="mx-2">›</span>
-                <span class="font-medium text-gray-700 dark:text-gray-300">Edit</span>
-            </div>
-
             <!-- Header -->
             <div class="flex justify-between items-center mb-4">
                 <h1 class="text-2xl font-bold">Edit Income</h1>
@@ -178,7 +169,7 @@ const submit = () => {
                 <!-- Status -->
                 <div>
                     <label class="block font-medium text-gray-700 dark:text-gray-300">Status *</label>
-                    <select v-model="form.status" class="w-full border rounded-lg p-2 dark:bg-gray-700 dark:border-gray-600">
+                    <select v-model="form.status" class="w-full border rounded-lg p-2 uppercase dark:bg-gray-700 dark:border-gray-600">
                         <option>Paid</option>
                         <option>Unpaid</option>
                         <option>Cash On Hold</option>

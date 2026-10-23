@@ -30,6 +30,9 @@ const deleteSupplier = (id) => {
 // ─── Search state ──────────────────────────
 const search = ref(props.filters?.search || '');
 const appliedSearch = ref(search.value);
+const dateFrom = ref(props.filters?.date_from || '');
+const dateTo = ref(props.filters?.date_to || '');
+const hasExpenses = ref(props.filters?.has_expenses || '');
 
 // ─── Debounce helper ────────────────────────
 function debounce(fn, delay) {
@@ -40,39 +43,40 @@ function debounce(fn, delay) {
     };
 }
 
-// ─── Apply search ───────────────────────────
-const applySearch = debounce(() => {
+// ─── Apply filters ──────────────────────────
+const applyFilters = () => {
     appliedSearch.value = search.value;
     const params = {};
     if (appliedSearch.value) params.search = appliedSearch.value;
+    if (dateFrom.value) params.date_from = dateFrom.value;
+    if (dateTo.value) params.date_to = dateTo.value;
+    if (hasExpenses.value) params.has_expenses = hasExpenses.value;
     router.get(route('suppliers.index'), params, {
         preserveState: true,
         preserveScroll: true,
         replace: true,
     });
-}, 2000);
+};
 
-// ─── Watch search ───────────────────────────
-watch(search, applySearch);
+const debouncedSearch = debounce(applyFilters, 400);
+const debouncedFilters = debounce(applyFilters, 250);
+watch(search, debouncedSearch);
+watch([dateFrom, dateTo, hasExpenses], debouncedFilters);
 
 // ─── Reset search ───────────────────────────
 const resetSearch = () => {
     search.value = '';
     appliedSearch.value = '';
-    window.location.href = route('suppliers.index');
+    dateFrom.value = '';
+    dateTo.value = '';
+    hasExpenses.value = '';
+    applyFilters();
 };
 </script>
 
 <template>
     <AppLayout>
         <div class="p-6">
-
-            <!-- Breadcrumb -->
-            <div class="text-sm text-gray-500 dark:text-gray-400 mb-2">
-                <Link :href="route('dashboard')" class="hover:underline">Home</Link>
-                <span class="mx-2">›</span>
-                <span class="font-medium text-gray-700 dark:text-gray-300">Suppliers</span>
-            </div>
 
             <!-- Header -->
             <div class="flex flex-wrap justify-between items-center mb-4 gap-2">
@@ -121,8 +125,8 @@ const resetSearch = () => {
                 </div>
             </div>
 
-            <!-- Search Bar -->
-            <div class="bg-white dark:bg-gray-800 p-4 rounded-lg shadow mb-4 flex flex-wrap items-center gap-4">
+            <!-- Filters -->
+            <div class="bg-white dark:bg-gray-800 p-4 rounded-lg shadow mb-4 flex flex-wrap items-end gap-4">
                 <div class="flex-1 min-w-[200px]">
                     <label class="block text-xs font-medium text-gray-700 dark:text-gray-300">Search Suppliers</label>
                     <div class="relative">
@@ -140,6 +144,22 @@ const resetSearch = () => {
                             ✕
                         </button>
                     </div>
+                </div>
+                <div>
+                    <label for="supplier-date-from" class="block text-xs font-medium text-gray-700 dark:text-gray-300">Added From</label>
+                    <input id="supplier-date-from" v-model="dateFrom" type="date" class="rounded-lg border px-3 py-1.5 text-sm dark:border-gray-600 dark:bg-gray-700" />
+                </div>
+                <div>
+                    <label for="supplier-date-to" class="block text-xs font-medium text-gray-700 dark:text-gray-300">Added To</label>
+                    <input id="supplier-date-to" v-model="dateTo" type="date" class="rounded-lg border px-3 py-1.5 text-sm dark:border-gray-600 dark:bg-gray-700" />
+                </div>
+                <div>
+                    <label for="supplier-expense-filter" class="block text-xs font-medium text-gray-700 dark:text-gray-300">Expense Activity</label>
+                    <select id="supplier-expense-filter" v-model="hasExpenses" class="rounded-lg border px-3 py-1.5 text-sm dark:border-gray-600 dark:bg-gray-700">
+                        <option value="">All Suppliers</option>
+                        <option value="yes">Has Expenses</option>
+                        <option value="no">No Expenses</option>
+                    </select>
                 </div>
                 <button
                     @click="resetSearch"
@@ -162,19 +182,7 @@ const resetSearch = () => {
                 </template>
             </DataTable>
 
-            <!-- Pagination -->
-            <div v-if="suppliers.links" class="mt-4 flex justify-center space-x-2">
-                <template v-for="link in suppliers.links" :key="link.label">
-                    <button
-                        v-if="link.url"
-                        @click="router.visit(link.url)"
-                        :class="link.active ? 'bg-primary text-primary-foreground' : 'bg-gray-200 dark:bg-gray-700'"
-                        class="px-3 py-1 rounded-md"
-                        v-html="link.label"
-                    />
-                    <span v-else class="px-3 py-1 rounded-md text-gray-400" v-html="link.label" />
-                </template>
-            </div>
+            <Pagination :links="suppliers.links" />
         </div>
     </AppLayout>
 </template>

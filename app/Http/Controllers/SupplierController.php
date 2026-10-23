@@ -13,8 +13,16 @@ class SupplierController extends Controller
     public function index(Request $request) // 👈 added Request
     {
         $this->authorize('viewAny', Supplier::class);
+        $request->validate([
+            'date_from' => ['nullable', 'date'],
+            'date_to' => ['nullable', 'date', 'after_or_equal:date_from'],
+            'has_expenses' => ['nullable', 'in:yes,no'],
+        ]);
 
         $search = $request->input('search');
+        $dateFrom = $request->input('date_from');
+        $dateTo = $request->input('date_to');
+        $hasExpenses = $request->input('has_expenses', '');
 
         $perPage = Setting::get('rows_per_page', 20);
 
@@ -29,6 +37,18 @@ class SupplierController extends Controller
                   ->orWhere('phone', 'like', $like)
                   ->orWhere('address', 'like', $like);
             });
+        }
+
+        if ($dateFrom) {
+            $query->whereDate('created_at', '>=', $dateFrom);
+        }
+        if ($dateTo) {
+            $query->whereDate('created_at', '<=', $dateTo);
+        }
+        if ($hasExpenses === 'yes') {
+            $query->whereHas('expenseTransactions');
+        } elseif ($hasExpenses === 'no') {
+            $query->whereDoesntHave('expenseTransactions');
         }
 
         $suppliers = $query->latest()
@@ -62,7 +82,12 @@ class SupplierController extends Controller
         return Inertia::render('Suppliers/Index', [
             'suppliers' => $suppliers,
             'summary' => $summary,
-            'filters' => ['search' => $search], // 👈 pass current search to Vue
+            'filters' => [
+                'search' => $search,
+                'date_from' => $dateFrom,
+                'date_to' => $dateTo,
+                'has_expenses' => $hasExpenses,
+            ],
         ]);
     }
 

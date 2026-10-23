@@ -3,10 +3,68 @@ import { ref, computed } from 'vue';
 import { Link, usePage, router } from '@inertiajs/vue3';
 import { useDarkMode } from '@/composables/useDarkMode';
 import ToastContainer from '@/Components/ToastContainer.vue';
+import ConfirmDialog from '@/Components/ConfirmDialog.vue';
 
-const { isDark, toggle } = useDarkMode();
+const { theme, isDark } = useDarkMode();
 const page = usePage();
 const user = computed(() => page.props.auth?.user ?? null);
+const breadcrumb = computed(() => {
+    const component = page.component || '';
+    const componentParts = component.split('/');
+    const sectionMap = {
+        Dashboard: 'Main',
+        Clients: 'CRM',
+        Suppliers: 'CRM',
+        Income: 'Financial',
+        Expenses: 'Financial',
+        Miscellaneous: 'Financial',
+        Quotations: 'Operations',
+        Retainers: 'Operations',
+        Reports: 'Reporting',
+        ReceivablesPayables: 'Reporting',
+        Summary: 'Reporting',
+        Users: 'Admin',
+        Profile: 'Admin',
+        Settings: 'Admin',
+        Admin: 'Admin',
+    };
+    const titleMap = {
+        'ReceivablesPayables/Index': 'Receivables & Payables',
+        'Reports/Aging': 'Receivables Aging',
+        'Reports/PayablesAging': 'Payables Aging',
+        'Summary/Index': 'Summary',
+        'Admin/AuditLog': 'Audit Log',
+        'Expenses/Recurring/Index': 'Recurring Expenses',
+    };
+    const sectionKey = componentParts[0];
+    const pageKey = componentParts.at(-1);
+    let title = titleMap[component];
+    let action = null;
+
+    if (!title) {
+        if (pageKey === 'Create') action = 'Create';
+        else if (pageKey === 'Edit') action = 'Edit';
+        else if (pageKey === 'Show') action = 'Details';
+        else if (pageKey === 'Trash') action = 'Trash';
+        else if (pageKey === 'Form') action = page.url.includes('/edit') ? 'Edit' : 'Create';
+        else if (pageKey === 'Index') title = sectionKey;
+        else title = pageKey || 'Page';
+    }
+
+    const items = [
+        { label: 'Home', href: route('dashboard') },
+        { label: sectionMap[sectionKey] || 'Main' },
+    ];
+
+    if (action && componentParts.length > 1) {
+        items.push({ label: sectionKey });
+        items.push({ label: action });
+    } else {
+        items.push({ label: title || action });
+    }
+
+    return items;
+});
 
 const avatarUrl = computed(() => {
     if (user.value?.avatar_path) {
@@ -22,10 +80,24 @@ const imageUrl = (path) => {
 const sidebarOpen = ref(true);
 const mobileOpen = ref(false);
 const isLoading = ref(false);
+const loadingPath = ref('');
 const isLoggingOut = ref(false);
 
-router.on('start', () => { isLoading.value = true; });
+router.on('start', (event) => {
+    isLoading.value = true;
+    loadingPath.value = event.detail.visit.url.pathname.toLowerCase();
+});
 router.on('finish', () => { isLoading.value = false; });
+
+const skeletonKind = computed(() => {
+    const path = loadingPath.value;
+    if (path === '/' || path.includes('dashboard')) return 'dashboard';
+    if (path.includes('reports') || path.includes('summary')) return 'analytics';
+    if (path.includes('receivables-payables')) return 'split-tables';
+    if (/\/(create|edit|settings|profile)(\/|$)/.test(path)) return 'form';
+    if (/\/(clients|suppliers|income|expenses|misc|quotations|retainers|users)(\/|$)/.test(path)) return 'table';
+    return 'compact';
+});
 
 const toggleSidebar = () => {
     if (window.innerWidth < 1024) {
@@ -74,7 +146,7 @@ const menuItems = {
 
 <template>
     <!-- ─── Main container with consistent gradient ─── -->
-    <div class="min-h-screen bg-gradient-to-br from-emerald-50/90 to-green-50/90 dark:from-gray-900 dark:to-gray-800 transition-colors duration-300">
+    <div class="min-h-screen bg-gradient-to-br from-emerald-50/90 to-green-50/90 dark:from-gray-900 dark:to-gray-800 transition-colors duration-300" :class="{ 'theme-teal-canvas': theme === 'teal', 'theme-light-canvas': theme === 'light' }">
 
         <!-- ─── Top Loading Bar ─── -->
         <Transition name="loading-bar">
@@ -180,18 +252,29 @@ const menuItems = {
                     </div>
                 </div>
 
-                <button
-                    @click="toggle"
-                    class="w-full flex items-center gap-3 px-3 py-2 rounded-lg text-sm font-medium transition-all duration-200 text-gray-600 dark:text-gray-300 hover:bg-emerald-50/50 dark:hover:bg-emerald-900/20 hover:text-emerald-700 dark:hover:text-emerald-400"
-                >
-                    <svg v-if="isDark" class="w-5 h-5 shrink-0 text-gray-500 dark:text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <label v-if="sidebarOpen" class="flex items-center gap-3 px-3 py-2 text-sm font-medium text-gray-600 dark:text-gray-300">
+                    <svg class="w-5 h-5 shrink-0 text-emerald-600 dark:text-emerald-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 3v1m0 16v1m9-9h-1M4 12H3m15.364 6.364l-.707-.707M6.343 6.343l-.707-.707m12.728 0l-.707.707M6.343 17.657l-.707.707M16 12a4 4 0 11-8 0 4 4 0 018 0z" />
                     </svg>
-                    <svg v-else class="w-5 h-5 shrink-0 text-gray-500 dark:text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M20.354 15.354A9 9 0 018.646 3.646 9.003 9.003 0 0012 21a9.003 9.003 0 008.354-5.646z" />
-                    </svg>
-                    <span v-if="sidebarOpen">{{ isDark ? 'Light mode' : 'Dark mode' }}</span>
-                </button>
+                    <span class="flex-1">Theme</span>
+                    <select v-model="theme" aria-label="Choose theme" class="max-w-28 rounded-md border border-gray-300 bg-white px-2 py-1 text-xs text-gray-700 dark:border-gray-600 dark:bg-gray-800 dark:text-gray-200">
+                        <option value="light">Light</option>
+                        <option value="dark">Dark</option>
+                        <option value="teal">Teal</option>
+                    </select>
+                </label>
+                <div v-else class="flex justify-center py-2">
+                    <div class="relative flex h-8 w-8 items-center justify-center rounded-md text-emerald-600 hover:bg-emerald-50 dark:text-emerald-400 dark:hover:bg-emerald-900/30">
+                        <svg class="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 3a9 9 0 100 18h1a2 2 0 002-2c0-.5-.2-1-.5-1.4-.3-.4-.5-.9-.5-1.4a2 2 0 012-2h2.2a2.8 2.8 0 002.8-2.8C21 6.8 17 3 12 3zM7.5 10h.01M10 7h.01M15 7h.01M17.5 10h.01" />
+                        </svg>
+                        <select v-model="theme" aria-label="Choose theme" class="absolute inset-0 h-full w-full cursor-pointer opacity-0">
+                        <option value="light">Light</option>
+                        <option value="dark">Dark</option>
+                        <option value="teal">Teal</option>
+                        </select>
+                    </div>
+                </div>
 
                 <button
                     @click="logout"
@@ -222,22 +305,115 @@ const menuItems = {
                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16M4 18h16" />
                         </svg>
                     </button>
-                    <h1 class="text-lg font-semibold text-gray-800 dark:text-white capitalize">
-                        {{ $page.component }}
-                    </h1>
                 </div>
             </header>
 
-            <Transition name="fade">
-                <div v-if="isLoading" class="fixed inset-0 z-10 bg-white/30 dark:bg-gray-950/30 backdrop-blur-[2px] pointer-events-none"></div>
-            </Transition>
-
             <main class="p-4 md:p-6">
-                <slot />
+                <nav class="mb-2 px-6 text-sm text-gray-500 dark:text-gray-400" aria-label="Breadcrumb">
+                    <template v-for="(item, index) in breadcrumb" :key="`${item.label}-${index}`">
+                        <Link v-if="item.href" :href="item.href" class="hover:underline">{{ item.label }}</Link>
+                        <span v-else :class="index === breadcrumb.length - 1 ? 'font-medium text-gray-700 dark:text-gray-300' : ''">{{ item.label }}</span>
+                        <span v-if="index < breadcrumb.length - 1" class="mx-2" aria-hidden="true">›</span>
+                    </template>
+                </nav>
+                <div v-if="isLoading" class="animate-pulse" role="status" aria-label="Loading page">
+                    <span class="sr-only">Loading page</span>
+
+                    <div v-if="skeletonKind === 'dashboard'" class="space-y-6">
+                        <div class="flex items-center justify-between gap-4">
+                            <div class="h-7 w-52 rounded bg-gray-200 dark:bg-gray-700"></div>
+                            <div class="h-9 w-44 rounded bg-gray-200 dark:bg-gray-700"></div>
+                        </div>
+                        <div class="grid grid-cols-1 gap-4 sm:grid-cols-2 2xl:grid-cols-4">
+                            <div v-for="card in 4" :key="`dashboard-metric-${card}`" class="space-y-3 rounded-lg border border-gray-200 bg-white p-5 dark:border-gray-700 dark:bg-gray-800">
+                                <div class="h-3 w-24 rounded bg-gray-200 dark:bg-gray-700"></div>
+                                <div class="h-7 w-36 rounded bg-gray-200 dark:bg-gray-700"></div>
+                                <div class="h-2 w-full rounded bg-gray-100 dark:bg-gray-700/70"></div>
+                            </div>
+                        </div>
+                        <div class="grid grid-cols-1 gap-5 lg:grid-cols-2">
+                            <div v-for="chart in 4" :key="`dashboard-chart-${chart}`" class="space-y-4 rounded-lg border border-gray-200 bg-white p-5 dark:border-gray-700 dark:bg-gray-800">
+                                <div class="h-4 w-40 rounded bg-gray-200 dark:bg-gray-700"></div>
+                                <div class="h-56 rounded bg-gray-100 dark:bg-gray-700/70"></div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div v-else-if="skeletonKind === 'analytics'" class="space-y-6">
+                        <div class="flex items-center justify-between gap-4">
+                            <div class="h-7 w-48 rounded bg-gray-200 dark:bg-gray-700"></div>
+                            <div class="h-9 w-64 rounded bg-gray-200 dark:bg-gray-700"></div>
+                        </div>
+                        <div class="flex flex-wrap gap-3">
+                            <div v-for="filter in 4" :key="`analytics-filter-${filter}`" class="h-9 w-36 rounded bg-gray-200 dark:bg-gray-700"></div>
+                        </div>
+                        <div class="grid grid-cols-1 gap-5 lg:grid-cols-2">
+                            <div v-for="chart in 2" :key="`analytics-chart-${chart}`" class="space-y-4 rounded-lg border border-gray-200 bg-white p-5 dark:border-gray-700 dark:bg-gray-800">
+                                <div class="h-4 w-44 rounded bg-gray-200 dark:bg-gray-700"></div>
+                                <div class="h-64 rounded bg-gray-100 dark:bg-gray-700/70"></div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div v-else-if="skeletonKind === 'table'" class="space-y-5">
+                        <div class="flex items-center justify-between gap-4">
+                            <div class="h-7 w-48 rounded bg-gray-200 dark:bg-gray-700"></div>
+                            <div class="h-9 w-32 rounded bg-gray-200 dark:bg-gray-700"></div>
+                        </div>
+                        <div class="flex flex-wrap gap-3 rounded-lg border border-gray-200 bg-white p-4 dark:border-gray-700 dark:bg-gray-800">
+                            <div class="h-9 min-w-48 flex-1 rounded bg-gray-100 dark:bg-gray-700/70"></div>
+                            <div class="h-9 w-32 rounded bg-gray-100 dark:bg-gray-700/70"></div>
+                            <div class="h-9 w-28 rounded bg-gray-100 dark:bg-gray-700/70"></div>
+                        </div>
+                        <div class="overflow-hidden rounded-lg border border-gray-200 dark:border-gray-700">
+                            <div class="h-10 bg-gray-100 dark:bg-gray-700"></div>
+                            <div v-for="row in 8" :key="`table-row-${row}`" class="flex gap-4 border-t border-gray-100 p-4 dark:border-gray-700">
+                                <div v-for="column in 5" :key="`table-cell-${row}-${column}`" class="h-4 flex-1 rounded bg-gray-100 dark:bg-gray-700/70"></div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div v-else-if="skeletonKind === 'form'" class="mx-auto max-w-4xl space-y-6">
+                        <div class="flex items-center justify-between gap-4">
+                            <div class="h-7 w-48 rounded bg-gray-200 dark:bg-gray-700"></div>
+                            <div class="h-8 w-24 rounded bg-gray-200 dark:bg-gray-700"></div>
+                        </div>
+                        <div class="space-y-6 rounded-lg border border-gray-200 bg-white p-6 dark:border-gray-700 dark:bg-gray-800">
+                            <div v-for="field in 6" :key="`form-field-${field}`" class="space-y-2">
+                                <div class="h-3 w-28 rounded bg-gray-200 dark:bg-gray-700"></div>
+                                <div class="h-10 w-full rounded bg-gray-100 dark:bg-gray-700/70"></div>
+                            </div>
+                            <div class="flex justify-end gap-3 border-t border-gray-100 pt-4 dark:border-gray-700">
+                                <div class="h-9 w-24 rounded bg-gray-100 dark:bg-gray-700/70"></div>
+                                <div class="h-9 w-32 rounded bg-gray-200 dark:bg-gray-700"></div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div v-else-if="skeletonKind === 'split-tables'" class="space-y-5">
+                        <div class="h-7 w-64 rounded bg-gray-200 dark:bg-gray-700"></div>
+                        <div class="grid grid-cols-1 gap-5 lg:grid-cols-2">
+                            <div v-for="panel in 2" :key="`split-table-${panel}`" class="space-y-4 rounded-lg border border-gray-200 bg-white p-4 dark:border-gray-700 dark:bg-gray-800">
+                                <div class="h-5 w-40 rounded bg-gray-200 dark:bg-gray-700"></div>
+                                <div class="h-9 rounded bg-gray-100 dark:bg-gray-700/70"></div>
+                                <div v-for="row in 6" :key="`split-row-${panel}-${row}`" class="h-8 rounded bg-gray-100 dark:bg-gray-700/70"></div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div v-else class="space-y-5">
+                        <div class="h-7 w-48 rounded bg-gray-200 dark:bg-gray-700"></div>
+                        <div class="space-y-4 rounded-lg border border-gray-200 bg-white p-5 dark:border-gray-700 dark:bg-gray-800">
+                            <div v-for="line in 5" :key="`compact-line-${line}`" class="h-8 rounded bg-gray-100 dark:bg-gray-700/70"></div>
+                        </div>
+                    </div>
+                </div>
+                <slot v-else />
             </main>
         </div>
 
         <ToastContainer />
+        <ConfirmDialog />
     </div>
 </template>
 

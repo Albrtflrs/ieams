@@ -1,17 +1,19 @@
 // resources/js/composables/useDarkMode.js
-import { ref, watch } from 'vue';
+import { computed, ref, watch } from 'vue';
 
-// ← These are OUTSIDE the function — shared singleton
-const stored = localStorage.getItem('ieams-theme');
-const prefersDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
-const isDark = ref(stored !== null ? stored === 'dark' : prefersDark);
+const storedTheme = localStorage.getItem('ieams-theme');
+const initialTheme = storedTheme === 'light' ? 'teal' : storedTheme;
+const theme = ref(['light', 'dark', 'teal'].includes(initialTheme) ? initialTheme : 'teal');
+const isDark = computed(() => theme.value === 'dark');
+const isTeal = computed(() => theme.value === 'teal');
 
-watch(isDark, (val) => {
-    document.documentElement.classList.toggle('dark', val);
-    localStorage.setItem('ieams-theme', val ? 'dark' : 'light');
+watch(theme, (value) => {
+    document.documentElement.classList.toggle('dark', value === 'dark');
+    document.documentElement.classList.toggle('teal', value === 'teal');
+    localStorage.setItem('ieams-theme', value);
 }, { immediate: true });
 
 export function useDarkMode() {
-    const toggle = () => { isDark.value = !isDark.value; };
-    return { isDark, toggle };
+    const toggle = () => { theme.value = isDark.value ? 'light' : 'dark'; };
+    return { theme, isDark, isTeal, toggle };
 }
