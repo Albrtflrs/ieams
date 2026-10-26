@@ -142,6 +142,29 @@ const menuItems = {
         { name: 'Settings', route: 'settings', icon: 'M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z' },
     ],
 };
+
+const pageDescriptions = {
+    dashboard: 'Business performance and recent activity.',
+    'income.index': 'Record sales, receipts, and client balances.',
+    'expenses.index': 'Track supplier bills and operating costs.',
+    'misc.index': 'Manage income and expenses outside regular transactions.',
+    'clients.index': 'Maintain client contacts and review income activity.',
+    'suppliers.index': 'Maintain supplier contacts and review expense activity.',
+    'retainers.index': 'Track client agreements, balances, and documents.',
+    'quotations.index': 'Prepare client offers and convert accepted work.',
+    'reports.index': 'Analyze income, expenses, and financial trends.',
+    'receivables-payables.index': 'Review outstanding client balances and supplier bills.',
+    'summary.index': 'See key financial totals, margins, and monthly trends.',
+    'users.index': 'Manage accounts, roles, and access permissions.',
+    'profile.edit': 'Update your account details and preferences.',
+    settings: 'Configure organization and application defaults.',
+};
+
+function isCurrentPage(item) {
+    const targetPath = new URL(route(item.route), window.location.origin).pathname.replace(/\/$/, '') || '/';
+    const currentPath = page.url.split('?')[0].replace(/\/$/, '') || '/';
+    return currentPath === targetPath || currentPath.startsWith(`${targetPath}/`);
+}
 </script>
 
 <template>
@@ -176,8 +199,8 @@ const menuItems = {
             ]"
         >
             <!-- Logo area with mint gradient accent -->
-            <div class="flex items-center justify-between h-16 px-4 border-b border-gray-200 dark:border-gray-800 flex-shrink-0 bg-gradient-to-r from-emerald-50/80 to-white dark:from-emerald-900/20 dark:to-gray-900">
-                <Link :href="route('dashboard')" class="flex items-center gap-2">
+            <div class="relative flex items-center h-16 border-b border-gray-200 dark:border-gray-800 flex-shrink-0 bg-gradient-to-r from-emerald-50/80 to-white dark:from-emerald-900/20 dark:to-gray-900" :class="sidebarOpen ? 'justify-between px-4' : 'justify-center px-0'">
+                <Link :href="route('dashboard')" aria-label="IEAMS home" class="flex items-center gap-2">
                     <div class="w-8 h-8 rounded-lg overflow-hidden flex-shrink-0">
                         <img
                             :src="isDark ? imageUrl('/images/logow.png') : imageUrl('/images/logob.png')"
@@ -188,7 +211,7 @@ const menuItems = {
                     </div>
                     <span v-if="sidebarOpen" class="text-lg font-bold text-gray-800 dark:text-white">IEAMS</span>
                 </Link>
-                <button @click="toggleSidebar" class="p-1 rounded-lg hover:bg-emerald-100 dark:hover:bg-emerald-900/30 transition-colors">
+                <button @click="toggleSidebar" :title="sidebarOpen ? 'Collapse sidebar' : 'Expand sidebar'" :aria-label="sidebarOpen ? 'Collapse sidebar' : 'Expand sidebar'" :class="['p-1 rounded-lg hover:bg-emerald-100 dark:hover:bg-emerald-900/30 transition-colors', sidebarOpen ? '' : 'absolute right-2']">
                     <svg class="w-5 h-5 text-gray-500 dark:text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                         <path v-if="sidebarOpen" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 19l-7-7 7-7m8 14l-7-7 7-7" />
                         <path v-else stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 5l7 7-7 7M5 5l7 7-7 7" />
@@ -206,9 +229,12 @@ const menuItems = {
                         <li v-for="item in items" :key="item.name">
                             <Link
                                 :href="route(item.route)"
-                                class="flex items-center gap-3 px-3 py-2 rounded-lg text-sm font-medium transition-all duration-200 group"
+                                :aria-label="`${item.name}: ${pageDescriptions[item.route] || 'Open page'}`"
+                                :title="sidebarOpen ? undefined : `${item.name}: ${pageDescriptions[item.route] || 'Open page'}`"
                                 :class="[
-                                    $page.component.startsWith(item.route) || $page.url === '/' + item.route
+                                    'flex rounded-lg text-sm font-medium transition-all duration-200 group',
+                                    sidebarOpen ? 'items-start gap-3 px-3 py-2' : 'items-center justify-center px-0 py-2',
+                                    isCurrentPage(item)
                                         ? 'bg-emerald-50 dark:bg-emerald-900/30 text-emerald-700 dark:text-emerald-400'
                                         : 'text-gray-600 dark:text-gray-300 hover:bg-emerald-50/50 dark:hover:bg-emerald-900/20 hover:text-emerald-700 dark:hover:text-emerald-400'
                                 ]"
@@ -216,7 +242,7 @@ const menuItems = {
                                 <svg
                                     class="w-5 h-5 shrink-0 transition-all duration-200 icon-shake"
                                     :class="[
-                                        $page.component.startsWith(item.route) || $page.url === '/' + item.route
+                                        isCurrentPage(item)
                                             ? 'text-emerald-500 dark:text-emerald-400'
                                             : 'text-gray-500 dark:text-gray-400 group-hover:text-emerald-500'
                                     ]"
@@ -226,7 +252,10 @@ const menuItems = {
                                 >
                                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" :d="item.icon" />
                                 </svg>
-                                <span v-if="sidebarOpen" class="truncate">{{ item.name }}</span>
+                                <span v-if="sidebarOpen" class="min-w-0">
+                                    <span class="block truncate">{{ item.name }}</span>
+                                    <span class="mt-0.5 hidden text-xs font-normal leading-4 text-gray-500 group-hover:block group-focus-visible:block dark:text-gray-400">{{ pageDescriptions[item.route] || 'Open page' }}</span>
+                                </span>
                             </Link>
                         </li>
                     </ul>
