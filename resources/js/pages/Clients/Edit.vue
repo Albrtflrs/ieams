@@ -33,17 +33,12 @@ function submit() {
                     <div v-if="form.errors.name" class="text-red-500 text-sm">{{ form.errors.name }}</div>
                 </div>
                 <div>
-                    <span class="block font-medium">Client Type *</span>
-                    <div class="flex gap-6 mt-2">
-                        <label class="flex items-center gap-2">
-                            <input type="checkbox" :checked="form.institution_type === 'Government'" @change="form.institution_type = $event.target.checked ? 'Government' : ''" />
-                            Government
-                        </label>
-                        <label class="flex items-center gap-2">
-                            <input type="checkbox" :checked="form.institution_type === 'Private Institution'" @change="form.institution_type = $event.target.checked ? 'Private Institution' : ''" />
-                            Private Institution
-                        </label>
-                    </div>
+                    <label for="institution_type" class="block font-medium">Client Type *</label>
+                    <input id="institution_type" v-model="form.institution_type" list="client-types" class="w-full border rounded p-2" maxlength="100" required />
+                    <datalist id="client-types">
+                        <option value="Government" />
+                        <option value="Private Institution" />
+                    </datalist>
                     <div v-if="form.errors.institution_type" class="text-red-500 text-sm">{{ form.errors.institution_type }}</div>
                 </div>
                 <div>

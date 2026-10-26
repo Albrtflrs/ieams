@@ -116,17 +116,32 @@ class SummaryController extends Controller
             ->toArray();
 
         // ─── Monthly trend ──────────────────────────────────
-        $months = collect(range(0, 11))->map(fn($i) => Carbon::now()->subMonths(11 - $i)->format('M Y'))->values();
-        $incomeTrend = [];
-        $expenseTrend = [];
-        foreach ($months as $monthLabel) {
-            $monthStart = Carbon::parse($monthLabel)->startOfMonth();
-            $monthEnd = Carbon::parse($monthLabel)->endOfMonth();
-            $incomeTrend[] = (float) IncomeTransaction::where('is_miscellaneous', false)
-                ->whereBetween('created_at', [$monthStart, $monthEnd])->sum('amount_paid');
-            $expenseTrend[] = (float) ExpenseTransaction::where('is_miscellaneous', false)
-                ->whereBetween('created_at', [$monthStart, $monthEnd])->sum('amount');
-        }
+        $monthExpression = match (DB::connection()->getDriverName()) {
+            'sqlite' => "strftime('%Y-%m', created_at)",
+            'mysql', 'mariadb' => "DATE_FORMAT(created_at, '%Y-%m')",
+            'pgsql' => "TO_CHAR(created_at, 'YYYY-MM')",
+            'sqlsrv' => "CONVERT(char(7), created_at, 126)",
+        };
+        $trendStart = Carbon::now()->subMonths(11)->startOfMonth();
+        $trendEnd = Carbon::now()->endOfMonth();
+        $months = collect(range(0, 11))->map(fn($i) => Carbon::now()->subMonths(11 - $i));
+
+        $incomeByMonth = IncomeTransaction::query()
+            ->selectRaw("{$monthExpression} as month, SUM(amount_paid) as total")
+            ->where('is_miscellaneous', false)
+            ->whereBetween('created_at', [$trendStart, $trendEnd])
+            ->groupByRaw($monthExpression)
+            ->pluck('total', 'month');
+        $expenseByMonth = ExpenseTransaction::query()
+            ->selectRaw("{$monthExpression} as month, SUM(amount) as total")
+            ->where('is_miscellaneous', false)
+            ->whereBetween('created_at', [$trendStart, $trendEnd])
+            ->groupByRaw($monthExpression)
+            ->pluck('total', 'month');
+
+        $incomeTrend = $months->map(fn($month) => (float) ($incomeByMonth[$month->format('Y-m')] ?? 0))->all();
+        $expenseTrend = $months->map(fn($month) => (float) ($expenseByMonth[$month->format('Y-m')] ?? 0))->all();
+        $months = $months->map(fn($month) => $month->format('M Y'))->values();
 
         // ─── TOP 5 INCOME CLIENTS (by amount_paid) ──────── 👈 NEW
         $topIncomeClients = IncomeTransaction::with('client')

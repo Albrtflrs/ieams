@@ -74,38 +74,44 @@ class DashboardController extends Controller
         $netProfitLast12 = $operatingProfitLast12;
 
         // ---- 3. Monthly breakdowns for charts (Income vs Expenses) ----
-        $months = collect(range(0, 11))->map(fn($i) => Carbon::parse($selectedMonth)->subMonths(11 - $i)->format('M Y'))->values();
+        $monthExpression = match (DB::connection()->getDriverName()) {
+            'sqlite' => "strftime('%Y-%m', created_at)",
+            'mysql', 'mariadb' => "DATE_FORMAT(created_at, '%Y-%m')",
+            'pgsql' => "TO_CHAR(created_at, 'YYYY-MM')",
+            'sqlsrv' => "CONVERT(char(7), created_at, 126)",
+        };
+        $monthDates = collect(range(0, 11))
+            ->map(fn($i) => Carbon::parse($selectedMonth)->startOfMonth()->subMonths(11 - $i));
+        $months = $monthDates->map(fn($month) => $month->format('M Y'))->values();
 
-        $incomeByMonth = [];
-        $expenseByMonth = [];
-        $receivablesByMonth = [];
-        $netProfitByMonth = [];
+        $monthlyIncome = IncomeTransaction::query()
+            ->selectRaw("{$monthExpression} as month, SUM(CASE WHEN is_miscellaneous = 0 THEN amount_paid ELSE 0 END) as income, SUM(CASE WHEN status IN ('Unpaid', 'Cash On Hold') THEN gross_price - COALESCE(amount_paid, 0) ELSE 0 END) as receivables")
+            ->whereBetween('created_at', [$start12Months, $end12Months])
+            ->groupByRaw($monthExpression)
+            ->get()
+            ->keyBy('month');
+        $monthlyExpenses = ExpenseTransaction::query()
+            ->selectRaw("{$monthExpression} as month, SUM(amount) as total")
+            ->where('is_miscellaneous', false)
+            ->whereBetween('created_at', [$start12Months, $end12Months])
+            ->groupByRaw($monthExpression)
+            ->pluck('total', 'month');
+        $monthlyOperatingExpenses = MiscellaneousTransaction::query()
+            ->selectRaw("{$monthExpression} as month, SUM(amount) as total")
+            ->where('type', 'expense')
+            ->whereBetween('created_at', [$start12Months, $end12Months])
+            ->groupByRaw($monthExpression)
+            ->pluck('total', 'month');
 
-        foreach ($months as $index => $monthLabel) {
-            $monthStart = Carbon::parse($monthLabel)->startOfMonth();
-            $monthEnd = Carbon::parse($monthLabel)->endOfMonth();
-
-            $inc = (float) IncomeTransaction::whereBetween('created_at', [$monthStart, $monthEnd])
-                ->where('is_miscellaneous', false)
-                ->sum('amount_paid');
-
-            $exp = (float) ExpenseTransaction::whereBetween('created_at', [$monthStart, $monthEnd])
-                ->where('is_miscellaneous', false)
-                ->sum('amount');
-
-            $receivables = (float) IncomeTransaction::whereBetween('created_at', [$monthStart, $monthEnd])
-                ->whereIn('status', ['Unpaid', 'Cash On Hold'])
-                ->sum(DB::raw('gross_price - amount_paid'));
-
-            $operatingExpenses = (float) MiscellaneousTransaction::whereBetween('created_at', [$monthStart, $monthEnd])
-                ->where('type', 'expense')
-                ->sum('amount');
-
-            $incomeByMonth[] = $inc;
-            $expenseByMonth[] = $exp;
-            $receivablesByMonth[] = $receivables;
-            $netProfitByMonth[] = $inc - $exp - $operatingExpenses;
-        }
+        $incomeByMonth = $monthDates->map(fn($month) => (float) ($monthlyIncome[$month->format('Y-m')]?->income ?? 0))->all();
+        $expenseByMonth = $monthDates->map(fn($month) => (float) ($monthlyExpenses[$month->format('Y-m')] ?? 0))->all();
+        $receivablesByMonth = $monthDates->map(fn($month) => (float) ($monthlyIncome[$month->format('Y-m')]?->receivables ?? 0))->all();
+        $netProfitByMonth = $monthDates->map(function ($month) use ($monthlyIncome, $monthlyExpenses, $monthlyOperatingExpenses) {
+            $key = $month->format('Y-m');
+            return (float) ($monthlyIncome[$key]?->income ?? 0)
+                - (float) ($monthlyExpenses[$key] ?? 0)
+                - (float) ($monthlyOperatingExpenses[$key] ?? 0);
+        })->all();
 
         // ---- 4. Expense categories (for bar chart) ----
         $expenseCategories = ExpenseTransaction::select('category', DB::raw('SUM(amount) as total'))

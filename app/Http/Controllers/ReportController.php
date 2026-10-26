@@ -109,10 +109,10 @@ class ReportController extends Controller
     private function applyDateRange($query, string $column, ?Carbon $from, ?Carbon $to)
     {
         if ($from) {
-            $query->whereDate($column, '>=', $from->toDateString());
+            $query->where($column, '>=', $from->toDateString());
         }
         if ($to) {
-            $query->whereDate($column, '<=', $to->toDateString());
+            $query->where($column, '<=', $to->toDateString());
         }
 
         return $query;
@@ -201,74 +201,71 @@ class ReportController extends Controller
             ->map(fn($item) => ['name' => $item->category, 'value' => (float) $item->total])
             ->toArray();
 
-        // ── Monthly Trend ──────────────────────────────────
-        $trendMonths = [];
-        $incomeTrend = [];
-        $expenseTrend = [];
-
+        // Aggregate all trend months in a few queries instead of querying once per month.
         if (($startDate && $endDate) || $dateFrom || $dateTo) {
-            $monthStart = ($startDate ?? $endDate?->copy()->subMonths(11) ?? Carbon::now()->subMonths(11))->copy()->startOfMonth();
-            $monthEnd = ($endDate ?? Carbon::now())->copy()->endOfMonth();
-            $current = $monthStart->copy();
-            while ($current <= $monthEnd) {
-                $trendMonths[] = $current->format('M Y');
-                $monthStartFilter = $current->copy()->startOfMonth();
-                $monthEndFilter = $current->copy()->endOfMonth();
-
-                $incQuery = IncomeTransaction::where('is_miscellaneous', false)
-                    ->when($clientId, fn($q) => $q->where('client_id', $clientId))
-                    ->when($incomeCategory, fn($q) => $q->where('category', $incomeCategory));
-                $this->applyDateRange($incQuery, 'date_delivered', $monthStartFilter, $monthEndFilter);
-                $this->applyDateRange($incQuery, 'date_delivered', $startDate, $endDate);
-                $inc = $incQuery->sum('amount_paid');
-                $miscIncQuery = MiscellaneousTransaction::where('type', 'income');
-                $this->applyDateRange($miscIncQuery, 'date', $monthStartFilter, $monthEndFilter);
-                $this->applyDateRange($miscIncQuery, 'date', $startDate, $endDate);
-                $inc += $miscIncQuery->sum('amount');
-
-                $expQuery = ExpenseTransaction::where('is_miscellaneous', false)
-                    ->when($supplierId, fn($q) => $q->where('supplier_id', $supplierId))
-                    ->when($expenseCategory, fn($q) => $q->where('category', $expenseCategory));
-                $this->applyDateRange($expQuery, 'date', $monthStartFilter, $monthEndFilter);
-                $this->applyDateRange($expQuery, 'date', $startDate, $endDate);
-                $exp = $expQuery->sum('amount');
-                $miscExpQuery = MiscellaneousTransaction::where('type', 'expense');
-                $this->applyDateRange($miscExpQuery, 'date', $monthStartFilter, $monthEndFilter);
-                $this->applyDateRange($miscExpQuery, 'date', $startDate, $endDate);
-                $exp += $miscExpQuery->sum('amount');
-
-                $incomeTrend[] = $inc;
-                $expenseTrend[] = $exp;
-                $current->addMonth();
-            }
+            $trendStart = ($startDate ?? $endDate?->copy()->subMonths(11) ?? Carbon::now()->subMonths(11))->copy()->startOfMonth();
+            $trendEnd = ($endDate ?? Carbon::now())->copy()->endOfMonth();
         } else {
-            $trendMonths = collect(range(0, 11))->map(fn($i) => Carbon::now()->subMonths(11 - $i)->format('M Y'))->values();
-            foreach ($trendMonths as $monthLabel) {
-                $monthStart = Carbon::parse($monthLabel)->startOfMonth();
-                $monthEnd = Carbon::parse($monthLabel)->endOfMonth();
-
-                $incQuery = IncomeTransaction::where('is_miscellaneous', false)
-                    ->when($clientId, fn($q) => $q->where('client_id', $clientId))
-                    ->when($incomeCategory, fn($q) => $q->where('category', $incomeCategory));
-                $this->applyDateRange($incQuery, 'date_delivered', $monthStart, $monthEnd);
-                $inc = $incQuery->sum('amount_paid');
-                $miscIncQuery = MiscellaneousTransaction::where('type', 'income');
-                $this->applyDateRange($miscIncQuery, 'date', $monthStart, $monthEnd);
-                $inc += $miscIncQuery->sum('amount');
-
-                $expQuery = ExpenseTransaction::where('is_miscellaneous', false)
-                    ->when($supplierId, fn($q) => $q->where('supplier_id', $supplierId))
-                    ->when($expenseCategory, fn($q) => $q->where('category', $expenseCategory));
-                $this->applyDateRange($expQuery, 'date', $monthStart, $monthEnd);
-                $exp = $expQuery->sum('amount');
-                $miscExpQuery = MiscellaneousTransaction::where('type', 'expense');
-                $this->applyDateRange($miscExpQuery, 'date', $monthStart, $monthEnd);
-                $exp += $miscExpQuery->sum('amount');
-
-                $incomeTrend[] = $inc;
-                $expenseTrend[] = $exp;
-            }
+            $trendStart = Carbon::now()->subMonths(11)->startOfMonth();
+            $trendEnd = Carbon::now()->endOfMonth();
         }
+
+        $trendDates = collect();
+        for ($month = $trendStart->copy(); $month <= $trendEnd; $month->addMonth()) {
+            $trendDates->push($month->copy());
+        }
+        $trendMonths = $trendDates->map(fn($month) => $month->format('M Y'))->values();
+        $monthExpression = match (DB::connection()->getDriverName()) {
+            'sqlite' => fn($column) => "strftime('%Y-%m', {$column})",
+            'mysql', 'mariadb' => fn($column) => "DATE_FORMAT({$column}, '%Y-%m')",
+            'pgsql' => fn($column) => "TO_CHAR({$column}, 'YYYY-MM')",
+            'sqlsrv' => fn($column) => "CONVERT(char(7), {$column}, 126)",
+        };
+
+        $incomeTrendQuery = IncomeTransaction::query()
+            ->when(in_array(DB::connection()->getDriverName(), ['mysql', 'mariadb'], true), fn($query) => $query->from(DB::raw('income_transactions FORCE INDEX (income_delivered_misc_idx)')))
+            ->selectRaw($monthExpression('date_delivered') . ' as month, SUM(amount_paid) as total')
+            ->where('is_miscellaneous', false)
+            ->when($clientId, fn($query) => $query->where('client_id', $clientId))
+            ->when($incomeCategory, fn($query) => $query->where('category', $incomeCategory))
+            ->whereBetween('date_delivered', [$trendStart->toDateString(), $trendEnd->toDateString()]);
+        $this->applyDateRange($incomeTrendQuery, 'date_delivered', $startDate, $endDate);
+        $incomeTrendByMonth = $incomeTrendQuery
+            ->groupByRaw($monthExpression('date_delivered'))
+            ->pluck('total', 'month');
+
+        $expenseTrendQuery = ExpenseTransaction::query()
+            ->when(in_array(DB::connection()->getDriverName(), ['mysql', 'mariadb'], true), fn($query) => $query->from(DB::raw('expense_transactions FORCE INDEX (expense_date_misc_idx)')))
+            ->selectRaw($monthExpression('date') . ' as month, SUM(amount) as total')
+            ->where('is_miscellaneous', false)
+            ->when($supplierId, fn($query) => $query->where('supplier_id', $supplierId))
+            ->when($expenseCategory, fn($query) => $query->where('category', $expenseCategory))
+            ->whereBetween('date', [$trendStart->toDateString(), $trendEnd->toDateString()]);
+        $this->applyDateRange($expenseTrendQuery, 'date', $startDate, $endDate);
+        $expenseTrendByMonth = $expenseTrendQuery
+            ->groupByRaw($monthExpression('date'))
+            ->pluck('total', 'month');
+
+        $miscTrendQuery = MiscellaneousTransaction::query()
+            ->selectRaw($monthExpression('date') . ' as month, type, SUM(amount) as total')
+            ->whereIn('type', ['income', 'expense'])
+            ->whereBetween('date', [$trendStart->toDateString(), $trendEnd->toDateString()]);
+        $this->applyDateRange($miscTrendQuery, 'date', $startDate, $endDate);
+        $miscByMonthAndType = $miscTrendQuery
+            ->groupByRaw($monthExpression('date') . ', type')
+            ->get()
+            ->keyBy(fn($row) => $row->month . ':' . $row->type);
+
+        $incomeTrend = $trendDates->map(function ($month) use ($incomeTrendByMonth, $miscByMonthAndType) {
+            $key = $month->format('Y-m');
+            return (float) ($incomeTrendByMonth[$key] ?? 0)
+                + (float) ($miscByMonthAndType[$key . ':income']->total ?? 0);
+        })->all();
+        $expenseTrend = $trendDates->map(function ($month) use ($expenseTrendByMonth, $miscByMonthAndType) {
+            $key = $month->format('Y-m');
+            return (float) ($expenseTrendByMonth[$key] ?? 0)
+                + (float) ($miscByMonthAndType[$key . ':expense']->total ?? 0);
+        })->all();
 
         // ── Top Clients ────────────────────────────────────
         $topClientsQuery = Client::query()

@@ -3,6 +3,7 @@
 namespace App\Http\Controllers;
 
 use App\Models\Supplier;
+use App\Models\ExpenseTransaction;
 use App\Models\Setting;
 use Illuminate\Http\Request;
 use Inertia\Inertia;
@@ -70,7 +71,7 @@ class SupplierController extends Controller
             ->orderBy('expense_transactions_sum_amount', 'desc')->first();
         $topSupplierCount = Supplier::withCount('expenseTransactions')
             ->orderBy('expense_transactions_count', 'desc')->first();
-        $totalExpenses = Supplier::with('expenseTransactions')->get()->sum(fn($s) => $s->expenseTransactions->sum('amount'));
+        $totalExpenses = ExpenseTransaction::whereHas('supplier')->sum('amount');
 
         $summary = [
             'total_suppliers' => $totalSuppliers,

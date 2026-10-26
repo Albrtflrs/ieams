@@ -16,7 +16,9 @@ class HandleInertiaRequests extends Middleware
             'auth' => [
                 'user' => $request->user(),
             ],
-            'settings' => Setting::pluck('value', 'key')->toArray(),
+            'settings' => Setting::whereIn('key', ['currency_symbol', 'date_format', 'rows_per_page'])
+                ->pluck('value', 'key')
+                ->toArray(),
             'flash' => [
                 'success' => fn () => $request->session()->get('success'),
             ],

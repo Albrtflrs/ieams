@@ -8,6 +8,7 @@ const props = defineProps({
     clients: Object,
     summary: Object,
     filters: Object, // 👈 new
+    clientTypes: { type: Array, default: () => [] },
 });
 
 const columns = [
@@ -127,8 +128,7 @@ const resetSearch = () => {
                     <label class="block text-xs font-medium text-gray-700 dark:text-gray-300">Client Type</label>
                     <select v-model="clientType" class="border rounded-lg px-3 py-1.5 dark:bg-gray-700 dark:border-gray-600">
                         <option value="">All Types</option>
-                        <option value="Government">Government</option>
-                        <option value="Private Institution">Private Institution</option>
+                        <option v-for="type in clientTypes" :key="type" :value="type">{{ type }}</option>
                     </select>
                 </div>
                 <button

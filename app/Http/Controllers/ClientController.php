@@ -21,7 +21,7 @@ class ClientController extends Controller
 
         $query = Client::query();
 
-        if (in_array($clientType, ['Government', 'Private Institution'], true)) {
+        if ($clientType !== '') {
             $query->where('institution_type', $clientType);
         }
 
@@ -52,27 +52,34 @@ class ClientController extends Controller
             ]);
 
         // ─── Summary calculations (unchanged) ───
-        $totalClients = Client::count();
-        $topClientRevenue = Client::withSum('incomeTransactions', 'amount_paid')
-            ->orderBy('income_transactions_sum_amount_paid', 'desc')->first();
-        $topClientCount = Client::withCount('incomeTransactions')
-            ->orderBy('income_transactions_count', 'desc')->first();
-        $totalRevenue = DB::table('income_transactions')
-            ->join('clients', 'clients.id', '=', 'income_transactions.client_id')
+        $clientTotals = DB::table('clients')
+            ->leftJoin('income_transactions', 'clients.id', '=', 'income_transactions.client_id')
             ->whereNull('clients.deleted_at')
-            ->sum('income_transactions.amount_paid');
+            ->groupBy('clients.id', 'clients.name')
+            ->selectRaw('clients.id, clients.name, SUM(CASE WHEN income_transactions.deleted_at IS NULL THEN income_transactions.amount_paid ELSE 0 END) as revenue, SUM(income_transactions.amount_paid) as total_revenue, SUM(CASE WHEN income_transactions.deleted_at IS NULL THEN 1 ELSE 0 END) as transaction_count')
+            ->get();
+        $totalClients = $clientTotals->count();
+        $topClientRevenue = $clientTotals->sortByDesc('revenue')->first();
+        $topClientCount = $clientTotals->sortByDesc('transaction_count')->first();
+        $totalRevenue = (float) $clientTotals->sum('total_revenue');
 
         $summary = [
             'total_clients' => $totalClients,
             'total_revenue' => $totalRevenue,
-            'top_client_revenue' => $topClientRevenue ? ['name' => $topClientRevenue->name, 'amount' => $topClientRevenue->income_transactions_sum_amount_paid ?? 0] : null,
-            'top_client_count' => $topClientCount ? ['name' => $topClientCount->name, 'count' => $topClientCount->income_transactions_count ?? 0] : null,
+            'top_client_revenue' => $topClientRevenue ? ['name' => $topClientRevenue->name, 'amount' => (float) $topClientRevenue->revenue] : null,
+            'top_client_count' => $topClientCount ? ['name' => $topClientCount->name, 'count' => (int) $topClientCount->transaction_count] : null,
         ];
 
         return Inertia::render('Clients/Index', [
             'clients' => $clients,
             'summary' => $summary,
             'filters' => ['search' => $search, 'client_type' => $clientType],
+            'clientTypes' => Client::query()
+                ->whereNotNull('institution_type')
+                ->where('institution_type', '<>', '')
+                ->distinct()
+                ->orderBy('institution_type')
+                ->pluck('institution_type'),
         ]);
     }
 
@@ -105,7 +112,7 @@ class ClientController extends Controller
         $this->authorize('create', Client::class);
         $validated = $request->validate([
             'name' => 'required|string|max:255',
-            'institution_type' => 'required|in:Government,Private Institution',
+            'institution_type' => 'required|string|max:100',
             'contact_person' => 'nullable|string|max:255',
             'phone' => 'nullable|string|max:50',
             'email' => 'nullable|email|max:255',
@@ -127,7 +134,7 @@ class ClientController extends Controller
         $this->authorize('update', $client);
         $validated = $request->validate([
             'name' => 'required|string|max:255',
-            'institution_type' => 'required|in:Government,Private Institution',
+            'institution_type' => 'required|string|max:100',
             'contact_person' => 'nullable|string|max:255',
             'phone' => 'nullable|string|max:50',
             'email' => 'nullable|email|max:255',

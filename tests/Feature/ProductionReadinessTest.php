@@ -4,9 +4,11 @@ namespace Tests\Feature;
 
 use App\Models\User;
 use App\Models\ExpenseTransaction;
+use App\Models\IncomeTransaction;
 use App\Models\MiscellaneousTransaction;
 use App\Models\Setting;
 use App\Models\Supplier;
+use App\Models\Client;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Tests\TestCase;
 
@@ -137,6 +139,7 @@ class ProductionReadinessTest extends TestCase
             'supplier_id' => $active->id,
             'created_by' => $admin->id,
             'date' => '2026-09-10',
+            'amount' => 125,
             'is_miscellaneous' => false,
         ]);
 
@@ -145,9 +148,38 @@ class ProductionReadinessTest extends TestCase
         $response->assertOk();
         $response->assertInertia(fn ($page) => $page
             ->component('Suppliers/Index')
+            ->where('summary.total_expenses', 125)
             ->where('filters.has_expenses', 'yes')
             ->has('suppliers.data', 1)
             ->where('suppliers.data.0.id', $active->id)
+        );
+    }
+
+    public function test_clients_summary_preserves_soft_deleted_income_totals(): void
+    {
+        $admin = User::factory()->create(['role' => 'admin']);
+        $client = Client::factory()->create(['name' => 'Summary Client']);
+        IncomeTransaction::factory()->create([
+            'client_id' => $client->id,
+            'created_by' => $admin->id,
+            'amount_paid' => 100,
+        ]);
+        $deletedIncome = IncomeTransaction::factory()->create([
+            'client_id' => $client->id,
+            'created_by' => $admin->id,
+            'amount_paid' => 50,
+        ]);
+        $deletedIncome->delete();
+
+        $response = $this->actingAs($admin)->get('/clients');
+
+        $response->assertOk();
+        $response->assertInertia(fn ($page) => $page
+            ->component('Clients/Index')
+            ->where('summary.total_clients', 1)
+            ->where('summary.total_revenue', 150)
+            ->where('summary.top_client_revenue.amount', 100)
+            ->where('summary.top_client_count.count', 1)
         );
     }
 
@@ -216,6 +248,28 @@ class ProductionReadinessTest extends TestCase
             ->where('transactions.0.date', '2026-09-15')
             ->where('filters.date_from', null)
             ->where('filters.date_to', '2026-09-30')
+        );
+    }
+
+    public function test_report_monthly_trend_includes_transactions_on_the_first_day(): void
+    {
+        $admin = User::factory()->create(['role' => 'admin']);
+        $supplier = Supplier::factory()->create();
+        $month = now()->format('Y-m');
+        ExpenseTransaction::factory()->create([
+            'supplier_id' => $supplier->id,
+            'created_by' => $admin->id,
+            'date' => now()->startOfMonth()->toDateString(),
+            'amount' => 80,
+            'is_miscellaneous' => false,
+        ]);
+
+        $response = $this->actingAs($admin)->get('/reports?period=this_month&month=' . $month);
+
+        $response->assertOk();
+        $response->assertInertia(fn ($page) => $page
+            ->component('Reports/Index')
+            ->where('expense_trend.0', 80)
         );
     }
 

@@ -10,6 +10,7 @@ const props = defineProps({
     summary: { type: Object, default: () => ({}) },
     filters: { type: Object, default: () => ({}) },
     categories: { type: Array, default: () => [] },
+    clientTypes: { type: Array, default: () => [] },
 });
 
 const { currency } = useSettings();
@@ -279,8 +280,7 @@ const clearSearch = () => {
                     <label class="text-sm font-medium text-gray-700 dark:text-gray-300">Client Type:</label>
                     <select v-model="selectedClientType" class="border rounded px-3 py-1.5 dark:bg-gray-700">
                         <option value="">All</option>
-                        <option value="Government">Government</option>
-                        <option value="Private Institution">Private Institution</option>
+                        <option v-for="type in clientTypes" :key="type" :value="type">{{ type }}</option>
                     </select>
                 </div>
                 <div class="flex items-center gap-2">

@@ -36,7 +36,7 @@ class IncomeTransactionController extends Controller
         if ($status !== '') {
             $query->where('status', $status);
         }
-        if (in_array($clientType, ['Government', 'Private Institution'], true)) {
+        if ($clientType !== '') {
             $query->whereHas('client', fn ($cq) => $cq->where('institution_type', $clientType));
         }
         if ($search !== '') {
@@ -167,6 +167,12 @@ class IncomeTransactionController extends Controller
                 'client_type'=> $clientType,
             ],
             'categories'   => $categories,
+            'clientTypes'  => Client::query()
+                ->whereNotNull('institution_type')
+                ->where('institution_type', '<>', '')
+                ->distinct()
+                ->orderBy('institution_type')
+                ->pluck('institution_type'),
         ]);
     }
 
